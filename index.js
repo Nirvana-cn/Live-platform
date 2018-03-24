@@ -1,5 +1,5 @@
 var server=require('./server')
-var log=require('./log')
+var log=require('./log').log
 var port=process.argv[2] || 5001
 function fourohfour(info) {
     var res=info.res
