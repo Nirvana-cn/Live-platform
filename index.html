@@ -3,8 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <title>Live</title>
+    <style>
+        video{
+            width: 320px;
+            height: 240px;
+            border: 1px solid black;
+        }
+        div{
+            display:inline-block;
+        }
+    </style>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js" type="text/javascript"></script>
 </head>
 <body>
-
+<div id="setup">
+    <p>WebRTC Book Demo (local media only)</p>
+</div>
+<br>
+<div style="width:30%;vertical-align: top">
+    <div>
+        <video id="myVideo" autoplay controls muted="true"></video>
+    </div>
+</div>
+<script>
+    var myVideoStream,myVideo
+    window.onload=function () {
+        myVideo=document.getElementById("myVideo")
+        getMedia()
+    }
+    function getMedia() {
+        getUserMedia({"audio":true,"video":true},gotUserMedia,didntGetUserMedia)
+    }
+    function gotUserMedia(stream) {
+        myVideoStream=stream
+        attachMediaStream(myVideo,myVideoStream)
+    }
+    function didntGetUserMedia() {
+        console.log("Couldn't get video")
+    }
+</script>
 </body>
 </html>
