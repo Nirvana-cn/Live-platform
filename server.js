@@ -8,6 +8,6 @@ app.get('/',function (req, res) {
         res.end(data,'utf-8')
     })
 })
-var server=app.listen(3000,function () {
-    console.log('Server is listening at http://localhost:3000')
+var server=app.listen(3003,function () {
+    console.log('Server is listening at http://localhost:3003')
 })

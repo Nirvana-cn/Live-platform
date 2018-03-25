@@ -12,7 +12,8 @@
 <script>
     var video = document.getElementById('local');
     var constraints = window.constraints = {
-        "video":{"mandatory":{"facingMode":"environment"}}
+        audio:true,
+        video:true
     };
 
     navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
