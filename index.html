@@ -4,65 +4,81 @@
     <meta charset="UTF-8">
     <title>Live</title>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-<p>webRTC demo</p>
-<video id="local" autoplay playsinline></video>
-<div id="content">
-    <p>可用设备如下</p>
+<div id="app">
+    <div class="wrapper" v-show="flag">
+        <button @click="beginLive">发起直播</button>
+        <button @click="watchLive">观看直播</button>
+    </div>
+    <p v-show="online">主播暂时不在家</p>
+    <br>
+    <video id="live" autoplay></video>
 </div>
 </body>
 <script>
-    var video = document.getElementById('local');
-    var content = document.getElementById("content")
-    var constraints = window.constraints = {
-        video: true
-    };
-    navigator.mediaDevices.enumerateDevices()
-        .then(function (devices) {
-            devices.forEach(function (device) {
-                let str = device.kind + ": " + device.label + " id = " + device.deviceId;
-                console.log(str)
-                let child = document.createTextNode(str);
-                content.appendChild(child);
-                let br = document.createElement('br');
-                content.appendChild(br);
-            });
-        })
-        .catch(function (err) {
-            console.log(err.name + ": " + err.message);
-        });
-    navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+    var socket = io.connect()
+    var anchor, remote, watcher, userName
+    var app = new Vue({
+        el: '#app',
+        data: {
+            flag: true,
+            online: true
+        },
+        methods: {
+            beginLive() {
+                this.flag = false
+                userName = 'live'
+                var constraints = {audio: false, video: {width: 640}}
+                navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+            },
+            watchLive() {
+                this.flag = false
+                watcher = new RTCPeerConnection()
+                watcher.setRemoteDescription(remote).then(createAnswer)
+            }
+        }
+    })
 
     function handleSuccess(stream) {
-        var videoTracks = stream.getVideoTracks();
-        console.log('Got stream with constraints:', constraints);
-        console.log('Using video device: ' + videoTracks[0].label);
-        stream.oninactive = function () {
-            console.log('Stream inactive');
-        };
-        window.stream = stream; // make variable available to browser console
-        video.srcObject = stream;
+        document.getElementById("live").srcObject = stream
+        anchor = new RTCPeerConnection()
+        anchor.createOffer().then((offer) => {
+            anchor.setLocalDescription(offer)
+        }).then(sendLiveOffer)
     }
 
     function handleError(error) {
-        if (error.name === 'ConstraintNotSatisfiedError') {
-            errorMsg('The resolution ' + constraints.video.width.exact + 'x' +
-                constraints.video.width.exact + ' px is not supported by your device.');
-        } else if (error.name === 'PermissionDeniedError') {
-            errorMsg('Permissions have not been granted to use your camera and ' +
-                'microphone, you need to allow the page access to your devices in ' +
-                'order for the demo to work.');
-        }
-        errorMsg('getUserMedia error: ' + error.name, error);
+        console.log(error)
     }
 
-    function errorMsg(msg, error) {
-        errorElement.innerHTML += '<p>' + msg + '</p>';
-        if (typeof error !== 'undefined') {
-            console.error(error);
-        }
+    function sendLiveOffer() {
+        socket.emit('live', anchor.localDescription)
     }
 
+
+    //    watcher code
+    function createAnswer() {
+        watcher.createAnswer().then((answer) => {
+            watcher.setLocalDescription(answer)
+        }).then(sendAnswer)
+    }
+
+    function sendAnswer() {
+        socket.emit('watcher', watcher.localDescription)
+    }
+
+    socket.on('welcome', function (data) {
+        remote = data
+        console.log('receive ' + data)
+    })
+
+    socket.on('watcherAnswer', function (data) {
+        if (userName === 'live') {
+            anchor.setRemoteDescription(data).then(()=>{console.log('connect success')})
+        }
+    })
 </script>
 </html>
