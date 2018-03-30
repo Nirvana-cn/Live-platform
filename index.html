@@ -20,7 +20,8 @@
 </body>
 <script>
     var socket = io.connect()
-    var anchor, remote, watcher, userName
+    var myHostname = window.location.hostname
+    var anchor, remote, watcher, userName,dc
     var app = new Vue({
         el: '#app',
         data: {
@@ -36,18 +37,37 @@
             },
             watchLive() {
                 this.flag = false
-                watcher = new RTCPeerConnection()
-                watcher.setRemoteDescription(remote).then(createAnswer)
+                watcher = new RTCPeerConnection({
+                    iceServers: [
+                        {
+                            urls: "turn:" + myHostname,
+                            username: "webrtc",
+                            credential: "turnserver"
+                        }
+                    ]
+                })
+                let desc=new RTCSessionDescription(remote.sdp)
+                watcher.setRemoteDescription(desc).then(createAnswer)
+
             }
         }
     })
 
     function handleSuccess(stream) {
         document.getElementById("live").srcObject = stream
-        anchor = new RTCPeerConnection()
+        anchor = new RTCPeerConnection({
+            iceServers: [
+                {
+                    urls: "turn:" + myHostname,
+                    username: "webrtc",
+                    credential: "turnserver"
+                }
+            ]
+        })
         anchor.createOffer().then((offer) => {
             anchor.setLocalDescription(offer)
         }).then(sendLiveOffer)
+        return anchor.addStream(stream)
     }
 
     function handleError(error) {
@@ -55,30 +75,39 @@
     }
 
     function sendLiveOffer() {
-        socket.emit('live', anchor.localDescription)
+        socket.emit('live', {
+            name: userName,
+            target: 'watcher',
+            type: "video-offer",
+            sdp: anchor.localDescription
+        })
     }
-
+    socket.on('watcherAnswer', function (data) {
+        if (userName === 'live') {
+            let desc=new RTCSessionDescription(data.sdp)
+            anchor.setRemoteDescription(desc).then(()=>{console.log('PeerConnection success')})
+        }
+    })
 
     //    watcher code
     function createAnswer() {
         watcher.createAnswer().then((answer) => {
-            watcher.setLocalDescription(answer)
-        }).then(sendAnswer)
+            watcher.setLocalDescription(answer).then(sendAnswer)
+        })
     }
 
     function sendAnswer() {
-        socket.emit('watcher', watcher.localDescription)
+        socket.emit('watcher', {
+            name: 'watcher',
+            target: 'live',
+            type:'video-answer',
+            sdp:watcher.localDescription
+        })
     }
 
     socket.on('welcome', function (data) {
         remote = data
-        console.log('receive ' + data)
-    })
-
-    socket.on('watcherAnswer', function (data) {
-        if (userName === 'live') {
-            anchor.setRemoteDescription(data).then(()=>{console.log('connect success')})
-        }
+        console.log('receive ' + remote)
     })
 </script>
 </html>
