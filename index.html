@@ -20,7 +20,6 @@
 </body>
 <script>
     var socket = io.connect()
-    var myHostname = window.location.hostname
     var anchor, remote, watcher, userName
     var app = new Vue({
         el: '#app',
@@ -58,15 +57,15 @@
             },
             watchLive() {
                 this.flag = false
-                watcher = new RTCPeerConnection({
-                    iceServers: [
-                        {
-                            urls: "turn:" + myHostname,
-                            username: "webrtc",
-                            credential: "turnserver"
-                        }
-                    ]
-                })
+                watcher = new RTCPeerConnection()
+                watcher.onaddstream = function (e) {
+                    document.getElementById("live").srcObject = e.stream
+                }
+                watcher.onicecandidate = function (event) {
+                    if (event.candidate) {
+                        socket.emit('watcherIce', event.candidate)
+                    }
+                }
                 let desc = new RTCSessionDescription(remote.sdp)
                 watcher.setRemoteDescription(desc).then(createAnswer)
 
@@ -76,15 +75,16 @@
 
     function handleSuccess(stream) {
         document.getElementById("live").srcObject = stream
-        anchor = new RTCPeerConnection({
-            iceServers: [
-                {
-                    urls: "turn:" + myHostname,
-                    username: "webrtc",
-                    credential: "turnserver"
-                }
-            ]
-        })
+        anchor = new RTCPeerConnection()
+        anchor.addStream(stream)
+        anchor.onaddstream = function (e) {
+            console.log('有用户上线了')
+        }
+        anchor.onicecandidate = function (event) {
+            if (event.candidate) {
+                socket.emit('anchorIce', event.candidate)
+            }
+        }
         anchor.createOffer().then((offer) => {
             anchor.setLocalDescription(offer)
         }).then(sendLiveOffer)
@@ -132,6 +132,15 @@
     socket.on('welcome', function (data) {
         remote = data
         console.log('receive ' + remote)
+    })
+
+    socket.on('receiveAnchorIce', function (data) {
+        watcher.addIceCandidate(new RTCIceCandidate(data))
+    })
+    socket.on('receiveWatcherIce', function (data) {
+        if (userName === 'live') {
+            anchor.addIceCandidate(new RTCIceCandidate(data))
+        }
     })
 </script>
 </html>

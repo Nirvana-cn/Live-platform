@@ -19,6 +19,12 @@ io.on('connection',function (socket) {
     socket.on('live',function (data) {
         liveAddress=data
     })
+    socket.on('anchorIce',function (data) {
+        socket.broadcast.emit('receiveAnchorIce',data)
+    })
+    socket.on('watcherIce',function (data) {
+        socket.broadcast.emit('receiveWatcherIce',data)
+    })
     socket.on('watcher',function (data) {
         // watchers.push(data)
         io.emit('watcherAnswer',data)
