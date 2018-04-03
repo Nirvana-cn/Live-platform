@@ -9,86 +9,93 @@
 </head>
 <body>
 <div id="app">
-    <div class="wrapper" v-show="flag">
-        <button @click="beginLive">发起直播</button>
-        <button @click="watchLive">观看直播</button>
+    <div class="login" v-show="flag">
+        <p>观看直播前，请输入您的昵称</p>
+        <input type="text" v-model="userName"><button @click="sendName">提交昵称</button>
+        <p v-show="remind">昵称中不能含有任何空白字符，包括空格、制表符</p>
     </div>
-    <p v-show="online">主播暂时不在家</p>
-    <br>
-    <video id="live" autoplay></video>
+    <div class="wrapper" v-show="!flag">
+        <p>直播页</p>
+        <p v-show="online">主播目前不在线</p>
+        <video id="video" autoplay></video>
+    </div>
 </div>
 </body>
 <script>
     var socket = io.connect()
-    var anchor, remote, watcher, userName
+    var anchor, watcher
     var app = new Vue({
         el: '#app',
         data: {
             flag: true,
-            online: true
+            remind:false,
+            online:false,
+            userName:''
         },
         methods: {
-            beginLive() {
-                this.flag = false
-                userName = 'live'
-                var constraints = {
-                    audio: false,
-                    video: {
-                        mandatory: {
-                            minWidth: 640,
-                            minHeight: 480
+            sendName(){
+                var that=this
+                console.log(this.userName)
+                if(this.userName !== '' && this.userName.search(' ') == -1){
+                    socket.emit('userName',that.userName,function (data) {
+                        if(data){
+                            that.flag=false
+                        }else{
+                            alert('对不起，您输入的用户名已存在，请重新输入！')
                         }
-                    }
+                    })
+                }else{
+                    this.remind=true
                 }
-                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|OperaMini/i.test(navigator.userAgent)) {
-                    constraints = {
-                        audio: false,
-                        video: {
-                            mandatory: {
-                                minWidth: 480,
-                                minHeight: 320,
-                                maxWidth: 1024,
-                                maxHeight: 768
-                            }
-                        }
-                    }
-                }
-                navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
-            },
-            watchLive() {
-                this.flag = false
-                watcher = new RTCPeerConnection()
-                watcher.onaddstream = function (e) {
-                    document.getElementById("live").srcObject = e.stream
-                }
-                watcher.onicecandidate = function (event) {
-                    if (event.candidate) {
-                        socket.emit('watcherIce', event.candidate)
-                    }
-                }
-                let desc = new RTCSessionDescription(remote.sdp)
-                watcher.setRemoteDescription(desc).then(createAnswer)
-
             }
         }
     })
 
-    function handleSuccess(stream) {
-        document.getElementById("live").srcObject = stream
-        anchor = new RTCPeerConnection()
-        anchor.addStream(stream)
-        anchor.onaddstream = function (e) {
-            console.log('有用户上线了')
+    socket.on('live',function () {
+        console.log('主播上线了')
+        var mobile = {
+            audio: false,
+            video: {
+                mandatory: {
+                    maxWidth: 640,
+                    maxHeight: 360
+                }
+            }
         }
+        var desktop={
+            audio: false,
+            video: {
+                mandatory: {
+                    maxWidth: 1280,
+                    maxHeight: 720
+                }
+            }
+        }
+        var constraints
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|OperaMini/i.test(navigator.userAgent)) {
+            constraints = mobile
+        }else{
+            constraints = desktop
+        }
+        navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError)
+    })
+
+    socket.on('addWatcher',function (data) {
+        console.log('有新的观看者')
         anchor.onicecandidate = function (event) {
             if (event.candidate) {
                 socket.emit('anchorIce', event.candidate)
             }
         }
+    })
+
+    function handleSuccess(stream) {
+        document.getElementById("video").srcObject = stream
+        anchor = new RTCPeerConnection()
+        anchor.addStream(stream)
         anchor.createOffer().then((offer) => {
             anchor.setLocalDescription(offer)
         }).then(sendLiveOffer)
-        return anchor.addStream(stream)
     }
 
     function handleError(error) {
@@ -96,8 +103,8 @@
     }
 
     function sendLiveOffer() {
-        socket.emit('live', {
-            name: userName,
+        socket.emit('sendOffer', {
+            name: 'anchor',
             target: 'watcher',
             type: "video-offer",
             sdp: anchor.localDescription
@@ -105,15 +112,44 @@
     }
 
     socket.on('watcherAnswer', function (data) {
-        if (userName === 'live') {
-            let desc = new RTCSessionDescription(data.sdp)
-            anchor.setRemoteDescription(desc).then(() => {
-                console.log('PeerConnection success')
-            })
-        }
+        var desc = new RTCSessionDescription(data.sdp)
+        anchor.setRemoteDescription(desc).then(() => {
+            console.log('PeerConnection success')
+        })
+    })
+
+    socket.on('receiveWatcherIce', function (data) {
+        anchor.addIceCandidate(new RTCIceCandidate(data))
+    })
+
+    socket.on('watcherLeave',function () {
+        anchor.onicecandidate=null
+        anchor.onaddstream=null
     })
 
     //    watcher code
+    socket.on('watch',function (data) {
+        console.log('用户上线了')
+        if(data===null){
+            app.online=true
+            console.log('主播还在路上')
+        }else{
+            console.log('观看直播中')
+            watcher = new RTCPeerConnection()
+            watcher.onaddstream = function (e) {
+                document.getElementById("video").srcObject = e.stream
+                console.log('add stream success')
+            }
+            watcher.onicecandidate = function (event) {
+                if (event.candidate) {
+                    socket.emit('watcherIce', event.candidate)
+                }
+            }
+            let desc = new RTCSessionDescription(data.sdp)
+            watcher.setRemoteDescription(desc).then(createAnswer)
+        }
+    })
+
     function createAnswer() {
         watcher.createAnswer().then((answer) => {
             watcher.setLocalDescription(answer).then(sendAnswer)
@@ -121,26 +157,17 @@
     }
 
     function sendAnswer() {
-        socket.emit('watcher', {
+        socket.emit('sendAnswer', {
             name: 'watcher',
-            target: 'live',
+            target: 'anchor',
             type: 'video-answer',
             sdp: watcher.localDescription
         })
     }
 
-    socket.on('welcome', function (data) {
-        remote = data
-        console.log('receive ' + remote)
-    })
-
     socket.on('receiveAnchorIce', function (data) {
         watcher.addIceCandidate(new RTCIceCandidate(data))
     })
-    socket.on('receiveWatcherIce', function (data) {
-        if (userName === 'live') {
-            anchor.addIceCandidate(new RTCIceCandidate(data))
-        }
-    })
+
 </script>
 </html>
