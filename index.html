@@ -24,7 +24,7 @@
 </body>
 <script>
     var socket = io.connect()
-    var anchor=new Map(), watcher,watcherID,localStream
+    var anchor = new Map(), watcher, watcherID, localStream
     var app = new Vue({
         el: '#app',
         data: {
@@ -83,22 +83,22 @@
 
     socket.on('addWatcher', function (data) {
         console.log('有新的观看者')
-        let watcherID=data
-        anchor.set(watcherID,new RTCPeerConnection())
+        let watcherID = data
+        anchor.set(watcherID, new RTCPeerConnection())
         anchor.get(watcherID).addStream(localStream)
         anchor.get(watcherID).createOffer().then((offer) => {
             anchor.get(watcherID).setLocalDescription(offer)
         }).then(sendLiveOffer(watcherID))
         anchor.get(watcherID).onicecandidate = function (event) {
             if (event.candidate) {
-                socket.emit('anchorIce', {'ice':event.candidate,'target':watcherID})
+                socket.emit('anchorIce', {'ice': event.candidate, 'target': watcherID})
             }
         }
     })
 
     function handleSuccess(stream) {
         document.getElementById("video").srcObject = stream
-        localStream=stream
+        localStream = stream
     }
 
     function handleError(error) {
@@ -129,7 +129,7 @@
         anchor.get(data).onicecandidate = null
         anchor.get(data).onaddstream = null
         anchor.get(data).close()
-        anchor.set(data,null)
+        anchor.set(data, null)
     })
 
     //    watcher code
@@ -142,7 +142,7 @@
         }
         watcher.onicecandidate = function (event) {
             if (event.candidate) {
-                socket.emit('watcherIce', {'ice':event.candidate,name:watcherID})
+                socket.emit('watcherIce', {'ice': event.candidate, name: watcherID})
             }
         }
         let desc = new RTCSessionDescription(data.sdp)
@@ -151,13 +151,13 @@
 
     socket.on('receiveAnchorIce', function (data) {
         console.log(data)
-        if(data){
+        if (data) {
             watcher.addIceCandidate(new RTCIceCandidate(data))
         }
     })
 
     socket.on('welcome', function (data) {
-        watcherID=data
+        watcherID = data
     })
 
     function createAnswer() {
