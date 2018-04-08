@@ -25,15 +25,15 @@ io.on('connection', function (socket) {
             } else {
                 userNames.push(data)
                 socket.userName = data
-                socket.emit('welcome',socket.id)
-                io.to(liveAddress).emit('addWatcher',socket.id)
+                socket.emit('welcome', socket.id)
+                io.to(liveAddress).emit('addWatcher', socket.id)
             }
         }
     })
 
 
     socket.on('sendOffer', function (data) {
-        io.to(data.target).emit('watch',data)
+        io.to(data.target).emit('watch', data)
     })
 
     socket.on('sendAnswer', function (data) {
@@ -55,6 +55,6 @@ io.on('connection', function (socket) {
             console.log(userNames)
         }
         socket.broadcast.emit('userNames', userNames)
-        io.to(liveAddress).emit('watcherLeave',socket.id)
+        io.to(liveAddress).emit('watcherLeave', socket.id)
     })
 })
