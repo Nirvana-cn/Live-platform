@@ -24,7 +24,7 @@
 </body>
 <script>
     var socket = io.connect()
-    var anchor = new Map(), watcher, watcherID, localStream
+    var anchor = new Map(), watcher, userID, localStream
     var app = new Vue({
         el: '#app',
         data: {
@@ -36,8 +36,8 @@
         methods: {
             sendName() {
                 var that = this
-                console.log(this.userName)
-                if (this.userName !== '' && this.userName.search(' ') == -1) {
+//                console.log(that.userName)
+                if (that.userName !== '' && that.userName.search(' ') == -1) {
                     socket.emit('userName', that.userName, function (data) {
                         if (data) {
                             that.flag = false
@@ -46,14 +46,14 @@
                         }
                     })
                 } else {
-                    this.remind = true
+                    that.remind = true
                 }
             }
         }
     })
 
     socket.on('live', function () {
-        console.log('主播上线了')
+//        console.log('主播上线了')
         var mobile = {
             audio: false,
             video: {
@@ -82,13 +82,14 @@
     })
 
     socket.on('addWatcher', function (data) {
-        console.log('有新的观看者')
+//        console.log('有新的观看者')
         let watcherID = data
         anchor.set(watcherID, new RTCPeerConnection())
+//        anchor.get(watcherID).name=watcherID
         anchor.get(watcherID).addStream(localStream)
         anchor.get(watcherID).createOffer().then((offer) => {
-            anchor.get(watcherID).setLocalDescription(offer)
-        }).then(sendLiveOffer(watcherID))
+            anchor.get(watcherID).setLocalDescription(offer).then(sendLiveOffer(watcherID))
+        })
         anchor.get(watcherID).onicecandidate = function (event) {
             if (event.candidate) {
                 socket.emit('anchorIce', {'ice': event.candidate, 'target': watcherID})
@@ -105,16 +106,20 @@
         console.log('There is an error: ' + error)
     }
 
-    function sendLiveOffer(id) {
-        socket.emit('sendOffer', {
+    function sendLiveOffer(targetId) {
+        let sdp = anchor.get(targetId).localDescription
+        let offer = {
             name: 'anchor',
-            target: id,
+            target: targetId,
             type: "video-offer",
-            sdp: anchor.get(id).localDescription
-        })
+            sdp: sdp
+        }
+        socket.emit('sendOffer', offer)
+        console.log('offer 已发出')
     }
 
     socket.on('watcherAnswer', function (data) {
+        console.log('answer 已收到')
         var desc = new RTCSessionDescription(data.sdp)
         anchor.get(data.name).setRemoteDescription(desc).then(() => {
             console.log('PeerConnection success')
@@ -135,29 +140,29 @@
     //    watcher code
     socket.on('watch', function (data) {
         console.log('观看直播中')
+        console.log('offer 已收到')
         watcher = new RTCPeerConnection()
+        let desc = new RTCSessionDescription(data.sdp)
+        watcher.setRemoteDescription(desc).then(createAnswer)
         watcher.onaddstream = function (e) {
             document.getElementById("video").srcObject = e.stream
             console.log('add stream success')
         }
         watcher.onicecandidate = function (event) {
             if (event.candidate) {
-                socket.emit('watcherIce', {'ice': event.candidate, name: watcherID})
+                socket.emit('watcherIce', {'ice': event.candidate, name: userID})
             }
         }
-        let desc = new RTCSessionDescription(data.sdp)
-        watcher.setRemoteDescription(desc).then(createAnswer)
     })
 
     socket.on('receiveAnchorIce', function (data) {
-        console.log(data)
         if (data) {
             watcher.addIceCandidate(new RTCIceCandidate(data))
         }
     })
 
     socket.on('welcome', function (data) {
-        watcherID = data
+        userID = data
     })
 
     function createAnswer() {
@@ -168,11 +173,12 @@
 
     function sendAnswer() {
         socket.emit('sendAnswer', {
-            name: watcherID,
+            name: userID,
             target: 'anchor',
             type: 'video-answer',
             sdp: watcher.localDescription
         })
+        console.log('answer 已发出')
     }
 </script>
 </html>
