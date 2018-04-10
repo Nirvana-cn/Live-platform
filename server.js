@@ -19,14 +19,17 @@ io.on('connection', function (socket) {
             callback(false)
         } else {
             callback(true)
-            if (data === 'wuwei') {
+            if (data === '1399755191') {
                 liveAddress = socket.id
                 socket.emit('live')
             } else {
                 userNames.push(data)
                 socket.userName = data
-                socket.emit('welcome', socket.id)
-                io.to(liveAddress).emit('addWatcher', socket.id)
+                io.emit('userNames',userNames)
+                socket.emit('welcome', {'socketID': socket.id, 'liveAddress': liveAddress})
+                if (liveAddress !== null) {
+                    io.to(liveAddress).emit('addWatcher', socket.id)
+                }
             }
         }
     })
@@ -47,14 +50,22 @@ io.on('connection', function (socket) {
         io.to(liveAddress).emit('receiveWatcherIce', data)
     })
 
+    socket.on('sendMessage', function (data) {
+        socket.broadcast.emit('receiveMessage', data)
+    })
+
     socket.on('disconnect', function () {
-        console.log(socket.userName + " has left.")
-        if (!socket.userName) return;
-        if (userNames.indexOf(socket.userName) > -1) {
-            userNames.splice(userNames.indexOf(socket.userName), 1)
-            console.log(userNames)
+        if(socket.userName !== '1399755191'){
+            console.log(socket.userName + " has left.")
+            if (!socket.userName) return;
+            if (userNames.indexOf(socket.userName) > -1) {
+                userNames.splice(userNames.indexOf(socket.userName), 1)
+                console.log(userNames)
+            }
+            socket.broadcast.emit('userNames', userNames)
+            io.to(liveAddress).emit('watcherLeave', socket.id)
+        }else{
+            liveAddress=null;
         }
-        socket.broadcast.emit('userNames', userNames)
-        io.to(liveAddress).emit('watcherLeave', socket.id)
     })
 })

@@ -6,19 +6,114 @@
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        body {
+            background: url('xg.jpg') repeat;
+        }
+
+        #app {
+            width: 100%;
+            margin: 100px auto;
+            text-align: center;
+        }
+
+        .remind {
+            color: #f00;
+            font-size: 10px;
+        }
+
+        .live {
+            width: 80%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            text-align: start;
+        }
+
+        .chat {
+            margin: 21px 0 0 50px;
+        }
+
+        .content {
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+        }
+
+        .container {
+            width: 240px;
+            min-height: 450px;
+            max-height: 450px;
+            border: 1px solid #000;
+            overflow-y: scroll;
+        }
+
+        .userMessages {
+            margin-left: 5px;
+        }
+
+        .record {
+            word-wrap: break-word;
+            word-break: normal;
+        }
+
+        .input {
+            width: 75%;
+        }
+
+        .sendButton {
+            width: 20%;
+        }
+
+        .watcherList {
+            margin-left: 20px;
+        }
+    </style>
 </head>
 <body>
 <div id="app">
     <div class="login" v-show="flag">
         <p>观看直播前，请输入您的昵称</p>
-        <input type="text" v-model="userName">
+        <input type="text" v-model="userName" @keyup.enter="sendName">
         <button @click="sendName">提交昵称</button>
-        <p v-show="remind">昵称中不能含有任何空白字符，包括空格、制表符</p>
+        <p v-show="remind" class="remind">昵称中不能含有任何空白字符，包括空格、制表符</p>
     </div>
-    <div class="wrapper" v-show="!flag">
-        <p>直播页</p>
-        <p v-show="online">主播目前不在线</p>
-        <video id="video" autoplay></video>
+    <div class="live" v-show="!flag">
+        <div class="wrapper">
+            <span>直播页</span>
+            <span v-show="online">(主播目前不在线)</span>
+            <br>
+            <video id="video" autoplay></video>
+        </div>
+        <div class="chat">
+            <div class="content">
+                <div class="message">
+                    <div class="container" ref="scroll">
+                        <p>聊天信息</p>
+                        <div class="userMessages" v-for="item in messages">
+                            <p class="record">{{item.watcherName}}:{{item.watcherMessage}}</p>
+                        </div>
+                    </div>
+                    <div class="sendMessage">
+                        <input type="text" v-model="message" @keyup.enter="sendMessage" class="input">
+                        <button @click="sendMessage" class="sendButton">发送</button>
+                    </div>
+                </div>
+                <div class="watcherList">
+                    <p>当前在线{{userNames.length}}人</p>
+                    <div v-for="name in userNames">
+                        <p>{{name}}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 </body>
@@ -31,12 +126,27 @@
             flag: true,
             remind: false,
             online: false,
-            userName: ''
+            userName: '',
+            userNames: [],
+            message: '',
+            messages: []
+        },
+        watch: {
+            messages() {
+                this.$nextTick(() => {
+                    this.$refs.scroll.scrollTop = this.$refs.scroll.scrollHeight
+                })
+            }
         },
         methods: {
+            sendMessage() {
+                let data = {'watcherName': this.userName, 'watcherMessage': this.message}
+                this.messages.push(data)
+                socket.emit('sendMessage', data)
+                this.message = ''
+            },
             sendName() {
                 var that = this
-//                console.log(that.userName)
                 if (that.userName !== '' && that.userName.search(' ') == -1) {
                     socket.emit('userName', that.userName, function (data) {
                         if (data) {
@@ -53,7 +163,8 @@
     })
 
     socket.on('live', function () {
-//        console.log('主播上线了')
+        console.log('主播上线了')
+        app.userName = '主播'
         var mobile = {
             audio: false,
             video: {
@@ -82,10 +193,9 @@
     })
 
     socket.on('addWatcher', function (data) {
-//        console.log('有新的观看者')
+        console.log('有新的观看者')
         let watcherID = data
         anchor.set(watcherID, new RTCPeerConnection())
-//        anchor.get(watcherID).name=watcherID
         anchor.get(watcherID).addStream(localStream)
         anchor.get(watcherID).createOffer().then((offer) => {
             anchor.get(watcherID).setLocalDescription(offer).then(sendLiveOffer(watcherID))
@@ -135,6 +245,7 @@
         anchor.get(data).onaddstream = null
         anchor.get(data).close()
         anchor.set(data, null)
+        anchor.delete(data)
     })
 
     //    watcher code
@@ -162,7 +273,18 @@
     })
 
     socket.on('welcome', function (data) {
-        userID = data
+        userID = data.socketID
+        if (data.liveAddress === null) {
+            app.online = true
+        }
+    })
+
+    socket.on('receiveMessage', function (data) {
+        app.messages.push(data)
+    })
+
+    socket.on('userNames', function (data) {
+        app.userNames = data
     })
 
     function createAnswer() {
