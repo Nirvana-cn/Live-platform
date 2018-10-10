@@ -12,13 +12,36 @@
             padding: 0;
             list-style: none;
         }
+        body{
+            background: #ccc;
+        }
 
         #app {
             width: 100%;
             margin: 100px auto;
             text-align: center;
         }
-
+        #video{
+            border:1px solid #ccc;
+        }
+        .nameWrapper{
+            font-size:0;
+            margin-top:10px;
+        }
+        .nameWrapper input{
+            font-size:20px;
+            line-height:30px;
+            display: inline-block;
+            vertical-align: top;
+            height:30px;
+        }
+        .nameWrapper button{
+            font-size:18px;
+            display: inline-block;
+            vertical-align: top;
+            width:100px;
+            height:34px;
+        }
         .remind {
             color: #f00;
             font-size: 10px;
@@ -34,21 +57,27 @@
         }
 
         .chat {
-            margin: 21px 0 0 50px;
+            margin: 21px 0 0 10px;
         }
 
         .content {
             width: 100%;
             display: flex;
             flex-direction: row;
+            min-height: 360px;
+            max-height: 360px;
         }
 
         .container {
             width: 240px;
-            min-height: 450px;
-            max-height: 450px;
-            border: 1px solid #000;
+            min-height: 320px;
+            max-height: 320px;
             overflow-y: scroll;
+            background-color: #fff;
+        }
+
+        .container::-webkit-scrollbar{
+            display: none;
         }
 
         .userMessages {
@@ -59,17 +88,27 @@
             word-wrap: break-word;
             word-break: normal;
         }
-
-        .input {
-            width: 75%;
+        .sendMessage{
+            font-size:0;
+            margin-top:5px;
         }
-
+        .text{
+            font-size:16px;
+        }
         .sendButton {
-            width: 20%;
+            display: inline-block;
+            vertical-align: top;
+            width: 46px;
+            height: 38px;
+            line-height:38px;
+            font-size:16px;
         }
 
         .watcherList {
-            margin-left: 20px;
+            margin-left: 10px;
+        }
+        .nameList{
+            font-size:12px;
         }
     </style>
 </head>
@@ -77,34 +116,34 @@
 <div id="app">
     <div class="login" v-show="flag">
         <p>观看直播前，请输入您的昵称</p>
-        <input type="text" v-model="userName" @keyup.enter="sendName">
-        <button @click="sendName">提交昵称</button>
+        <div class="nameWrapper">
+            <input type="text" v-model="userName" @keyup.enter="sendName">
+            <button @click="sendName">提交昵称</button>
+        </div>
         <p v-show="remind" class="remind">昵称中不能含有任何空白字符，包括空格、制表符</p>
     </div>
     <div class="live" v-show="!flag">
         <div class="wrapper">
             <span>直播页</span>
-            <span v-show="online">(主播目前不在线)</span>
             <br>
-            <video id="video" autoplay></video>
+            <video id="video" autoplay width="640px" height="360px" controls></video>
         </div>
         <div class="chat">
             <div class="content">
                 <div class="message">
                     <div class="container" ref="scroll">
-                        <p>聊天信息</p>
                         <div class="userMessages" v-for="item in messages">
                             <p class="record">{{item.watcherName}}:{{item.watcherMessage}}</p>
                         </div>
                     </div>
                     <div class="sendMessage">
-                        <input type="text" v-model="message" @keyup.enter="sendMessage" class="input">
+                        <textarea id="" cols="22" rows="2" v-model="message" @keyup.enter="sendMessage" class="text"></textarea>
                         <button @click="sendMessage" class="sendButton">发送</button>
                     </div>
                 </div>
                 <div class="watcherList">
-                    <p>当前在线{{userNames.length}}人</p>
-                    <div v-for="name in userNames">
+                    <p>在线{{userNames.length}}人</p>
+                    <div v-for="name in userNames" class="nameList">
                         <p>{{name}}</p>
                     </div>
                 </div>
@@ -121,7 +160,6 @@
         data: {
             flag: true,
             remind: false,
-            online: false,
             userName: '',
             userNames: [],
             message: '',
@@ -161,7 +199,7 @@
     socket.on('live', function () {
         console.log('主播上线了')
         app.userName = '主播'
-        var mobile = {
+        var constraints = {
             audio: false,
             video: {
                 mandatory: {
@@ -169,21 +207,6 @@
                     maxHeight: 360
                 }
             }
-        }
-        var desktop = {
-            audio: false,
-            video: {
-                mandatory: {
-                    maxWidth: 1280,
-                    maxHeight: 720
-                }
-            }
-        }
-        var constraints
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|OperaMini/i.test(navigator.userAgent)) {
-            constraints = mobile
-        } else {
-            constraints = desktop
         }
         navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError)
     })
