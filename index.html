@@ -12,7 +12,8 @@
             padding: 0;
             list-style: none;
         }
-        body{
+
+        body {
             background: #ccc;
         }
 
@@ -21,27 +22,32 @@
             margin: 100px auto;
             text-align: center;
         }
-        #video{
-            border:1px solid #ccc;
+
+        #video {
+            border: 1px solid #ccc;
         }
-        .nameWrapper{
-            font-size:0;
-            margin-top:10px;
+
+        .nameWrapper {
+            font-size: 0;
+            margin-top: 10px;
         }
-        .nameWrapper input{
-            font-size:20px;
-            line-height:30px;
+
+        .nameWrapper input {
+            font-size: 20px;
+            line-height: 30px;
             display: inline-block;
             vertical-align: top;
-            height:30px;
+            height: 30px;
         }
-        .nameWrapper button{
-            font-size:18px;
+
+        .nameWrapper button {
+            font-size: 18px;
             display: inline-block;
             vertical-align: top;
-            width:100px;
-            height:34px;
+            width: 100px;
+            height: 34px;
         }
+
         .remind {
             color: #f00;
             font-size: 10px;
@@ -76,7 +82,7 @@
             background-color: #fff;
         }
 
-        .container::-webkit-scrollbar{
+        .container::-webkit-scrollbar {
             display: none;
         }
 
@@ -88,27 +94,31 @@
             word-wrap: break-word;
             word-break: normal;
         }
-        .sendMessage{
-            font-size:0;
-            margin-top:5px;
+
+        .sendMessage {
+            font-size: 0;
+            margin-top: 5px;
         }
-        .text{
-            font-size:16px;
+
+        .text {
+            font-size: 16px;
         }
+
         .sendButton {
             display: inline-block;
             vertical-align: top;
             width: 46px;
             height: 38px;
-            line-height:38px;
-            font-size:16px;
+            line-height: 38px;
+            font-size: 16px;
         }
 
         .watcherList {
             margin-left: 10px;
         }
-        .nameList{
-            font-size:12px;
+
+        .nameList {
+            font-size: 12px;
         }
     </style>
 </head>
@@ -137,7 +147,8 @@
                         </div>
                     </div>
                     <div class="sendMessage">
-                        <textarea id="" cols="22" rows="2" v-model="message" @keyup.enter="sendMessage" class="text"></textarea>
+                        <textarea id="" cols="22" rows="2" v-model="message" @keyup.enter="sendMessage"
+                                  class="text"></textarea>
                         <button @click="sendMessage" class="sendButton">发送</button>
                     </div>
                 </div>

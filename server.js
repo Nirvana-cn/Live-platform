@@ -34,7 +34,6 @@ io.on('connection', function (socket) {
         }
     })
 
-
     socket.on('sendOffer', function (data) {
         io.to(data.target).emit('watch', data)
     })
