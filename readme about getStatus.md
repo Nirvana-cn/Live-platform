@@ -4,20 +4,16 @@
 
 本篇文档主要分析RTCPeerConnection.prototype.getStats()方法，从而获取webrtc连接的状态统计信息，主要分为以下7个部分
 
-[TOC]
+1. 对getStats()的返回信息进行综述;
+2. getStats()方法源码解析；
+3. W3C标准下getStats()字段；
+4. Chrome；
+5. FireFox；
+6. Microsoft Edge；
+7. 实际应用封装；
 
 
-1. [对getStats()的返回信息进行综述;](#user-content-锚点)
-2. [getStats()方法源码解析；](#user-content-getStats()源码解析)
-3. [W3C标准下getStats()字段；](#3)
-4. [Chrome；](#4)
-5. [FireFox；](#5)
-6. [Microsoft Edge；](#6)
-7. [实际应用封装；](#7)
-
----
-
-### 1. getStats()结构，主要包含以下[四个部分](https://www.callstats.io/blog/2015/07/06/basics-webrtc-getstats-api)： {#1}
+### 1.getStats()结构，主要包含以下[四个部分](https://www.callstats.io/blog/2015/07/06/basics-webrtc-getstats-api)：
 
 - 发送者媒体捕获统计：对应于媒体生成，通常是帧速率，帧大小，媒体源的时钟速率，编解码器(codec)的名称等。
 
@@ -81,7 +77,7 @@
 ```
 
 
-### 3. W3C标准getStats()字段分析{#3}
+### 3. W3C标准getStats()字段分析
 
 ** 关于所有字段的意义可以参考[W3C标准第7部分](https://www.w3.org/TR/webrtc-stats/)。W3C标准一共有26个表示状态信息的对象
 
@@ -426,7 +422,7 @@ bandwidth  | 由于带宽估计期间的拥塞提示，分辨率和/或帧速率
 other |  分辨率和/或帧率主要受限于上述以外的原因。
 
 
-### 4. Chrome下getStats()字段对比{#4}
+### 4. Chrome下getStats()字段对比
 
 如前所述，getStats()返回的是一个Map结构，Map结构的每一个键值对的值是一个对象，键值为该对象的id属性。
 
@@ -627,7 +623,7 @@ transportId | 布尔  | 与一开始所述的"RTCTransport_video_1"或"RTCTransp
 timestamp | 数值  | 时间戳
 type | 字符串  | 类型说明，常见值为"outbound-rtp"或"inbound-rtp"
 
-"RTCOutboundRTPAudioStream_[10位编码]"独有的属性如下：
+"RTCOutboundRTPVideoStream_[10位编码]"独有的属性如下：
 
 字段 | 值类型 | 说明
 ----|------|----
@@ -636,7 +632,7 @@ framesEncoded | 数值 | 帧编码数
 packetsSent | 数值 | 发送的包数
 
 
-"RTCInboundRTPAudioStream_[10位编码]"独有的属性如下：
+"RTCInboundRTPVideoStream_[10位编码]"独有的属性如下：
 
 字段 | 值类型 | 说明
 ----|------|----
@@ -646,7 +642,8 @@ framesDecoded | 数值 | 帧解码数
 packetsLost | 数值 | 包丢失数量
 packetsReceived | 数值 | 包接收数量
 
-剩下的主要为"RTCCodec_video_Outbound_[编号]"、RTCCodec_video_Inbound_[编号]"、"RTCCodec_audio_Outbound_[编号]"和"RTCCodec_audio_Inbound_[编号]"四个视频、音频编码器对象，具有的属性如下：
+剩下的主要为"RTCCodec_video_Outbound_[编号]"、RTCCodec_video_Inbound_[编号]"、"RTCCodec_audio_Outbound_[编号]"
+和"RTCCodec_audio_Inbound_[编号]"四个视频、音频编码器对象，具有的属性如下：
 
 字段 | 值类型 | 说明
 ----|------|----
@@ -656,6 +653,9 @@ payloadType | 数值 | ？？？
 id | 字符串 | 与键名一致
 timestamp | 数值  | 时间戳
 type | 字符串  | 类型说明，常见值为"codec"
+
+** 视频、音频编码器编号具有固定值，音频编码器编号包括0、8、9、13、103-106、110-113、126；
+视频编码器编号包括96-102、107-109、114、119-125、127
 
 猜想：对于不同的媒体流，需要根据不同的时钟率(clockRate)和媒体类型(mimeType)选择合适的解码器(codec)。
 
@@ -670,10 +670,45 @@ timestamp | 数值  | 时间戳
 type | 字符串  | 类型说明，常见值为"peer-connection"
 
 
-### 5. FireFox下getStats()字段对比{#5}
+### 5. FireFox下getStats()字段对比
+
+FireFox对获取stats统计信息进行了优化，给每一条字段都添加了getter，这意味在获取stats时不需要向chrome那样设定一个定时器重复调用getStats()方法，
+FireFox只需要调用一次getStats()方法即可，由于getter的存在，之后每次获取的都是最新的状态，而不用更新整个对象，这对系统性能的提升非常有帮助。
+
+对于getStats()方法返回的对象信息，FireFox提供了直接的[文档说明](http://w3c.github.io/webrtc-pc/#mandatory-to-implement-stats)。
+文档中列出了支持的21种stats类型统计信息以及该stats具有的属性。具体stats以及独有属性（去除通用属性id、type、timestamp和一些继承属性）如下：
+
+stats类型 | 属性
+----|------
+RTCRTPStreamStats | ssrc, kind, transportId, codecId, nackCount
+RTCReceivedRTPStreamStats |packetsReceived, packetsLost, jitter, packetsDiscarded
+RTCInboundRTPStreamStats | bytesReceived, trackId, receiverId, remoteId, framesDecoded
+RTCRemoteInboundRTPStreamStats | localId, roundTripTime
+RTCSentRTPStreamStats | packetsSent, bytesSent
+RTCOutboundRTPStreamStats | trackId, senderId, remoteId, framesEncoded
+RTCRemoteOutboundRTPStreamStats |localId, remoteTimestamp
+RTCPeerConnectionStats | dataChannelsOpened, dataChannelsClosed
+RTCDataChannelStats | label, protocol, datachannelId, state, messagesSent, bytesSent, messagesReceived, bytesReceived
+RTCMediaStreamStats | streamIdentifer, trackIds
+RTCMediaStreamTrackStats | detached
+RTCMediaHandlerStats | trackIdentifier, remoteSource, ended
+RTCAudioHandlerStats | audioLevel
+RTCVideoHandlerStats | frameWidth, frameHeight, framesPerSecond
+RTCVideoSenderStats | framesSent
+RTCVideoReceiverStats | framesReceived, framesDecoded, framesDropped, framesCorrupted
+RTCCodecStats | payloadType, codec, clockRate, channels, sdpFmtpLine
+RTCTransportStats | bytesSent, bytesReceived, rtcpTransportStatsId, selectedCandidatePairId, localCertificateId, remoteCertificateId
+RTCIceCandidatePairStats | transportId, localCandidateId, remoteCandidateId, state, priority, nominated, bytesSent, bytesReceived, totalRoundTripTime, currentRoundTripTime
+RTCIceCandidateStats | address, port, protocol, candidateType, url
+RTCCertificateStats | fingerprint, fingerprintAlgorithm, base64Certificate, issuerCertificateId
+
+** FireFox中id属性值随机生成，没有固定形式。
+
+### 6. Microsoft Edge下getStats()字段对比
+
+Edge下返回的状态信息较为简单，仅包含7种stats类型。
 
 
-### 6. Microsoft Edge下getStats()字段对比{#6}
 
+### 7. 应用封装
 
-### 7. 应用封装{#7}
