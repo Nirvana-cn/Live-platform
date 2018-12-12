@@ -1,5 +1,23 @@
-### RTCPeerConnection.prototype.getStats()分析
-#### 1. getStatus()结构，主要包含以下[四个部分](https://www.callstats.io/blog/2015/07/06/basics-webrtc-getstats-api)：
+## RTCPeerConnection.prototype.getStats()分析
+
+
+
+本篇文档主要分析RTCPeerConnection.prototype.getStats()方法，从而获取webrtc连接的状态统计信息，主要分为以下7个部分
+
+[TOC]
+
+
+1. [对getStats()的返回信息进行综述;](#user-content-锚点)
+2. [getStats()方法源码解析；](#user-content-getStats()源码解析)
+3. [W3C标准下getStats()字段；](#3)
+4. [Chrome；](#4)
+5. [FireFox；](#5)
+6. [Microsoft Edge；](#6)
+7. [实际应用封装；](#7)
+
+---
+
+### 1. getStats()结构，主要包含以下[四个部分](https://www.callstats.io/blog/2015/07/06/basics-webrtc-getstats-api)： {#1}
 
 - 发送者媒体捕获统计：对应于媒体生成，通常是帧速率，帧大小，媒体源的时钟速率，编解码器(codec)的名称等。
 
@@ -17,7 +35,7 @@
 
 - 证书统计：显示证书相关信息，例如指纹和当前加密算法。
 
-#### 2. getStats()源码解析
+### 2. getStats()源码解析
 
 [adapt.js](https://webrtc.github.io/adapter/adapter-latest.js)中的getStatus源码如下所示：
 
@@ -63,11 +81,16 @@
 ```
 
 
-#### 3. W3C标准getStats()字段分析
+### 3. W3C标准getStats()字段分析{#3}
 
 ** 关于所有字段的意义可以参考[W3C标准第7部分](https://www.w3.org/TR/webrtc-stats/)。W3C标准一共有26个表示状态信息的对象
 
 （1）全局状态概览对象（1个）：
+
+"RTCTransportStats"对象表示与RTCDtlsTransport及其基础RTCIceTransport对应的统计信息。
+当使用RTCP复用时，一个传输用于RTP和RTCP。 否则，RTP和RTCP将在单独的传输上发送，
+并且rtcpTransportStatsId可用于配对生成的RTCTransportStats对象。此外，使用捆绑时，单个传输将用于捆绑组中的所有MediaStreamTracks。
+如果未使用捆绑，则不同的MediaStreamTrack将使用不同的传输。
 
 "RTCTransportStats"对象具有的属性如下：
 
@@ -148,7 +171,7 @@ nominated | Boolean  | 提名，此种ICE配对是否合适，合适则获得提
 state | RTCStatsIceCandidatePairState  | 此种ICE连接方式的状态，常见值为"succeeded"，"waiting"，"fail"，"in-progress"和"frozen"
 transportId | DOMString  | 与一开始所述的"RTCTransport_video_1"或"RTCTransport_audio_1"对象对应
 
-（4）与媒体流相关的对象（11个）
+（4）与媒体流相关的对象（10个）
 
 证书和ICE状态确定之后，我们还需要知道信道和视频、音频流的一些状态信息，即源码中对应rtp接收、发送的状态信息。
 主要包括"RTCMediaStreamStats"、"RTCMediaHandlerStats"、等对象，
@@ -173,6 +196,111 @@ messagesSent  | unsigned long  | 表示发送的API“消息”事件的总数�
 bytesSent  | unsigned long long  | 表示在此RTCDatachannel上发送的有效负载字节总数，不包括标头或填充。
 messagesReceived  | unsigned long  | 表示收到的API“消息”事件的总数。
 bytesReceived  | unsigned long long  | 表示在此RTCDatachannel上收到的有效负载字节总数，不包括标头或填充。
+
+"RTCRtpStreamStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+ssrc   | DOMString | 32位无符号整数值，用于标识此stats对象所关注的RTP数据包流的来源。
+kind   | DOMString | “音频”或“视频”。 这必须与RTCCodecStats的相应编解码器成员中的信息的媒体类型部分匹配，并且必须与相关MediaStreamTrack的“kind”属性匹配。
+transportId  | DOMString| 它是与检查的对象关联的唯一标识符，用于生成与此RTP流关联的RTCTransportStats。
+codecId    | unsigned long | 它是与检查的对象关联的唯一标识符，用于生成与此RTP流关联的RTCCodecStats。
+firCount   | unsigned long | 计算发送方接收的全内部请求（Full Intra Request, FIR）数据包的总数。该指标仅对视频有效，由接收方发送。
+pliCount   | unsigned long  | 计算发送方接收的图像丢失指示（Picture Loss Indication, PLI）数据包的总数。该指标仅对视频有效，由接收方发送。按[RFC4585]第6.3.1节中的定义计算。
+nackCount   | unsigned long | 计算发送方接收的否定确认（Negative ACKnowledgement, NACK）数据包的总数，并由接收方发送。按[RFC4585] 6.2.1节中的定义计算。
+sliCount   | unsigned long  | 计算发送方接收的Slice Loss Indication（SLI）数据包的总数。该指标仅对视频有效，由接收方发送。按[RFC4585]第6.3.2节中的定义计算。
+qpSum   | unsigned long long  | 通过的帧的QP值之和。 帧数是以帧为单位为入站流统计信息进行解码，而帧为对于出站流统计信息进行编码。QP值的定义取决于编解码器; 对于VP8，QP值是帧头中携带的值，作为语法元素“y_ac_qi”，并在[RFC6386]第19.2节中定义。它的范围是0..127
+
+"RTCReceivedRtpStreamStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+packetsReceived   | unsigned long | 此SSRC收到的RTP数据包总数。在接收端点，按[RFC3550]第6.4.1节中的定义计算。在发送端点，可以通过RTCP发送器报告中报告的预期最高序列号中减去丢失的数据包来计算packetsReceived。
+packetsLost   | long | 此SSRC丢失的RTP数据包总数。按照[RFC3550]第6.4.1节中的定义计算。请注意，由于估计的方式，如果收到的数据包多于发送的数据包，则可能为负数。
+jitter  | long | 此SSRC以秒为单位测量数据包抖动。
+packetsDiscarded    | unsigned long | 由于迟到或早到，抖动缓冲器丢弃的RTP分组的累积数量，即这些分组未被播放
+packetsRepaired   | unsigned long | 应用错误恢复机制[XRBLOCK-STATS]后修复的丢失RTP数据包的累计数量。它是针对主要源RTP数据包进行测量的，仅针对没有进一步修复机会的RTP数据包进行计数。
+burstPacketsLost   | unsigned long  | 丢失突发期间丢失的RTP数据包的累计数量。
+burstPacketsDiscarded   | unsigned long | 丢弃突发期间丢弃的RTP数据包的累计数量。
+burstLossCount   | unsigned long  | 丢失的RTP数据包的累积突发数。
+burstDiscardCount    | double  | 丢弃的RTP数据包的累积突发数。
+burstLossRate     | double | 在突发期间丢失的RTP分组的比例与突发中预期的RTP分组的总数。
+burstDiscardRate    | double  | 表在突发期间丢弃的RTP分组的比例与突发中预期的RTP分组的总数。
+gapLossRate    | double | 在间隙期间丢失的RTP数据包的比例。
+gapDiscardRate    | double| 在间隙期间丢弃的RTP分组的比例。
+
+"RTCSentRtpStreamStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+packetsSent   | unsigned long | 为此SSRC发送的RTP数据包总数。
+packetsDiscardedOnSend   | unsigned long | 由于套接字错误而丢弃的此SSRC的RTP数据包总数，即在将数据包传递到套接字时发生套接字错误。这可能由于各种原因而发生，包括完全缓冲或无可用内存。
+fecPacketsSent  | unsigned long | 为此SSRC发送的RTP FEC数据包总数。当使用媒体分组（例如，使用Opus）在带内发送FEC分组时，该计数器也可以递增。
+bytesSent    | unsigned long long | 为此SSRC发送的总字节数。
+bytesDiscardedOnSend    | unsigned long long | 由于套接字错误而丢弃的此SSRC的总字节数，即在将包含字节的数据包处理到套接字时发生套接字错误。这可能由于各种原因而发生，包括完全缓冲或无可用内存。
+
+"RTCInboundRtpStreamStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+trackId   | DOMString | 表示接收轨道的stats对象的标识符，RTCReceiverAudioTrackAttachmentStats或RTCReceiverVideoTrackAttachmentStats。
+receiverId   | DOMString | 用于查找接收此流的RTCAudioReceiverStats或RTCVideoReceiverStats对象的统计信息ID。
+remoteId  | DOMString | remoteId用于查找同一SSRC的远程RTCRemoteOutboundRtpStreamStats对象。
+framesDecoded   | DOMString | 仅对视频有效。它表示为该SSRC正确解码的帧的总数，即，如果没有丢弃帧则将显示的帧。
+lastPacketReceivedTimestamp   | DOMHighResTimeStamp | 表示为此SSRC接收最后一个数据包的时间戳。
+averageRtcpInterval   | double | 两个连续复合RTCP数据包之间的平均RTCP间隔。这是在发送复合RTCP报告时由发送端点计算的。复合数据包必须至少包含RTCP RR或SR数据包以及带有CNAME项的SDES数据包。
+fecPacketsReceived   | unsigned long | 此SSRC收到的RTP FEC数据包总数。当使用媒体分组（例如，使用Opus）在带内接收FEC分组时，该计数器也可以递增。
+bytesReceived   | unsigned long long   | 此SSRC收到的总字节数。
+packetsFailedDecryption   | unsigned long  | 根据[RFC3711]中的过程无法解密的RTP数据包的累计数量。packetsDiscarded不会对这些数据包进行计数。
+packetsDuplicated   | unsigned long  | 丢弃的累积数据包数，因为它们是重复的。PacketDiscarded中不会计算重复的数据包。
+perDscpPacketsReceived   | unsigned long | 根据差分服务代码点（Differentiated Services code point, DSCP）[RFC2474]，为此SSRC接收的数据包总数。 DSCP以字符串形式标识为十进制整数。请注意，由于网络重新映射和清除，这些数字预计不会与发送时看到的数字相匹配。并非所有操作系统都提供此信息。
+
+"RTCRemoteInboundRtpStreamStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+localId    | DOMString | localId用于查找同一SSRC的本地RTCOutboundRtpStreamStats对象。
+roundTripTime    | double | 根据RTCP接收器报告（RR）中的RTCP时间戳估算此SSRC的往返时间，并以秒为单位进行测量。
+fractionLost   | double| 报告此SSRC的分数丢包。
+
+"RTCOutboundRtpStreamStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+trackId   | DOMString | 表示发送轨道的stats对象的标识符，RTCReceiverAudioTrackAttachmentStats或RTCReceiverVideoTrackAttachmentStats。
+receiverId   | DOMString | 用于查找发送此流的RTCAudioReceiverStats或RTCVideoReceiverStats对象的统计信息ID。
+remoteId  | DOMString | remoteId用于查找同一SSRC的远程RTCRemoteOutboundRtpStreamStats对象。
+lastPacketReceivedTimestamp   | DOMHighResTimeStamp | 表示为此SSRC接收最后一个数据包的时间戳。
+targetBitrate    | double | 它是为此特定SSRC配置的当前目标比特率，并且是特定于传输的应用程序（Transport Independent Application Specific,TIAS）比特率[RFC3890]。通常，目标比特率是提供给编解码器编码器的配置参数，不计算IP或TCP或UDP等其他传输层的大小。它以每秒位数为单位测量，比特率在1秒窗口内计算。
+framesEncoded    | long | 仅对视频有效。 它表示为此RTP媒体流成功编码的帧总数。
+totalEncodeTime   | double | 编码此流的framesEncoded帧所花费的总秒数。可以通过将此值除以framesEncoded来计算平均编码时间。编码一帧所花费的时间是在向编码器馈送帧和编码器返回该帧的编码数据之间经过的时间。这不包括将结果数据打包所需的任何额外时间。
+averageRtcpInterval    | double | 两个连续复合RTCP数据包之间的平均RTCP间隔。这是在发送复合RTCP报告时由发送端点计算的。复合数据包必须至少包含RTCP RR或SR数据包以及带有CNAME项的SDES数据包。
+qualityLimitationReason   | RTCQualityLimitationReason | 仅对视频有效。限制分辨率和/或帧速率的当前原因，或者如果不限制则为“无”。
+qualityLimitationDurations  | double | 仅对视频有效。 此流在每个质量限制状态中花费的总时间（以秒为单位）的记录。该记录包括所有RTCQualityLimitationReason类型的映射，包括“none”。
+perDscpPacketsSent   | unsigned long | 每个DSCP为此SSRC发送的数据包总数。DSCP以字符串形式标识为十进制整数。
+
+"RTCRemoteOutboundRtpStreamStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+trackId   | DOMString | localId用于查找同一SSRC的本地RTCOutboundRtpStreamStats对象。
+roundTripTime    | double | 根据RTCP接收器报告（RR）中的RTCP时间戳估算此SSRC的往返时间，并以秒为单位进行测量。
+fractionLost   | double| 报告此SSRC的分数丢包。
+
+"RTCRtpContributingSourceStats"对象表示有助于传入RTP流的贡献源（CSRC）的度量指标。
+每个贡献源产生RTP分组流，其由混合器组合成单个RTP分组流，最终由WebRTC端点接收。
+可以在CSRC列表或接收到的RTP分组的[RFC6465]报头扩展中提供关于对该组合流做出贡献的源的信息。
+此stats对象的时间戳是由sourcesContributedTo接收和计数的源贡献的RTP数据包的最新时间。
+
+"RTCRtpContributingSourceStats"对象具有的属性如下：
+
+字段 | 值类型 | 说明
+----|------|----
+contributorSsrc    |  unsigned long | 此统计对象表示的贡献源的SSRC标识符，由[RFC3550]定义。它是一个32位无符号整数，出现在相关源所贡献的任何数据包的CSRC列表中。
+inboundRtpStreamId   | DOMString | RTCInboundRtpStreamStats对象的ID，表示此贡献源所贡献的入站RTP流。
+packetsContributedTo   |  unsigned long| 此贡献源所贡献的RTP数据包总数。每次RTCInboundRtpStreamStats.packetsReceived对数据包进行计数时，此值都会递增。
+audioLevel  | double| 如果最后收到的此源所贡献的RTP数据包包含[RFC6465]混音器到客户端音频级别标头扩展，则显示。audioLevel的值在0..1（线性）之间，其中1.0表示0 dBov，0表示静音，0.5表示声压级从0 dBov变化约6 dBSPL。
+
 
 （5）与音频流相关的对象"RTCAudioSenderStats"、"RTCSenderAudioTrackAttachmentStats"、"RTCAudioReceiverStats"和"RTCAudioHandlerStats"（4个）
 
@@ -210,6 +338,7 @@ totalSamplesDuration    | double| 表示已发送或已接收的所有样本的�
 
 （6）与视频流相关的对象"RTCVideoSenderStats"、"RTCSenderVideoTrackAttachmentStats"、"RTCVideoReceiverStats"和"RTCVideoHandlerStats"（4个）
 
+"RTCVideoSenderStats"对象表示有关一个调用getStats的"RTCPeerConnection"对象的一个视频发送方的统计信息。只要通过addTrack或addTransceiver添加发件人，或通过媒体协商，它就会显示在统计信息中。
 "RTCVideoSenderStats"对象具有的属性如下：
 
 字段 | 值类型 | 说明
@@ -221,6 +350,7 @@ keyFramesSent    | unsigned long long | 表示此RTCRtpSender发送的关键帧�
 
 "RTCSenderVideoTrackAttachmentStats"对象属性与"RTCVideoSenderStats"对象一致？？？
 
+"RTCVideoReceiverStats"对象表示有关一个调用getStats的"RTCPeerConnection"对象的一个视频接收器的统计信息。只要通过addTrack或addTransceiver或媒体协商添加RTCRtpReceiver，它就会出现在统计信息中。
 "RTCVideoReceiverStats"对象具有的属性如下：
 
 字段 | 值类型 | 说明
@@ -242,8 +372,6 @@ fullFramesLost   | unsigned long | 累计丢失的全帧数。
 frameWidth    | unsigned long | 表示此轨道的最后处理帧的宽度。在处理第一帧之前，缺少此属性。
 frameHeight    | unsigned long | 表示此轨道的最后处理帧的高度。在处理第一帧之前，缺少此属性。
 framesPerSecond   | double | 表示应用降级首选项之前的标称FPS值。它是最后一秒中完整帧的数量。对于发送轨道，它是当前捕获的FPS，对于接收轨道，它是当前的解码帧速率。
-
-
 
 
 （7）与数据通道相关的对象（2个）
@@ -286,13 +414,19 @@ channels   | unsigned long  | 使用2表示立体声，大多数情况下都不�
 sdpFmtpLine   | DOMString| ？？？
 implementation   | DOMString  | 标识使用的实现。这对于诊断互操作性问题很有用。
 
+（9） 其它（1个）
+
+"RTCQualityLimitationReason"对象的值是枚举类型，该属性仅对视频有效。表示限制分辨率和/或帧速率的当前原因。
+
+原因 | 说明
+----|----
+none| 分辨率和/或帧速率不受限制。
+cpu  | 由于CPU负载，分辨率和/或帧速率主要受限。
+bandwidth  | 由于带宽估计期间的拥塞提示，分辨率和/或帧速率主要受限。典型的拥塞控制算法使用到达间隔时间，往返时间，分组或其他拥塞提示来执行带宽估计。
+other |  分辨率和/或帧率主要受限于上述以外的原因。
 
 
-
-
-
-
-#### 4. Chrome下getStats()字段对比
+### 4. Chrome下getStats()字段对比{#4}
 
 如前所述，getStats()返回的是一个Map结构，Map结构的每一个键值对的值是一个对象，键值为该对象的id属性。
 
@@ -534,3 +668,12 @@ dataChannelsOpened | 数值 | ？？？
 id | 字符串 | 与键名一致
 timestamp | 数值  | 时间戳
 type | 字符串  | 类型说明，常见值为"peer-connection"
+
+
+### 5. FireFox下getStats()字段对比{#5}
+
+
+### 6. Microsoft Edge下getStats()字段对比{#6}
+
+
+### 7. 应用封装{#7}
