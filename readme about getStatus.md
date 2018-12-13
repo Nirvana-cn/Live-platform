@@ -102,6 +102,8 @@ dtlsState | RTCDtlsTransportState  | 设置为基础RTCDtlsTransport的“state�
 localCertificateId | DOMString | 本地证书
 remoteCertificateId | DOMString  | 远程证书
 selectedCandidatePairId | DOMString  | 它是与检查的对象关联的唯一标识符，用于生成与此传输关联的RTCIceCandidatePairStats
+dtlsCipher  | DOMString  | 用于DTLS传输的密码套件的描述性名称
+srtpCipher  | DOMString  | 用于SRTP传输的保护配置文件的描述性名称
 
 （2）与dtls有关的对象（1个）
 
@@ -170,7 +172,9 @@ transportId | DOMString  | 与一开始所述的"RTCTransport_video_1"或"RTCTra
 （4）与媒体流相关的对象（10个）
 
 证书和ICE状态确定之后，我们还需要知道信道和视频、音频流的一些状态信息，即源码中对应rtp接收、发送的状态信息。
-主要包括"RTCMediaStreamStats"、"RTCMediaHandlerStats"、等对象，
+主要包括"RTCMediaStreamStats"、"RTCMediaHandlerStats"、"RTCRtpStreamStats"、"RTCReceivedRtpStreamStats"、
+"RTCSentRtpStreamStats"、"RTCInboundRtpStreamStats"、"RTCRemoteInboundRtpStreamStats"、"RTCOutboundRtpStreamStats"、
+"RTCRemoteOutboundRtpStreamStats"和"RTCRtpContributingSourceStats"对象。
 
 "RTCMediaStreamStats"对象具有的属性如下：
 
@@ -422,11 +426,16 @@ bandwidth  | 由于带宽估计期间的拥塞提示，分辨率和/或帧速率
 other |  分辨率和/或帧率主要受限于上述以外的原因。
 
 
+** RTCStats Type类型枚举
+"codec", "inbound-rtp", "outbound-rtp", "remote-inbound-rtp", "remote-outbound-rtp", "csrc", "peer-connection", "data-channel", "stream", "track", "sender",
+"receiver", "transport", "candidate-pair", "local-candidate", "remote-candidate", "certificate"
+
+
 ### 4. Chrome下getStats()字段对比
 
 如前所述，getStats()返回的是一个Map结构，Map结构的每一个键值对的值是一个对象，键值为该对象的id属性。
 
-首先在返回的所有键值对中，最重要的是键值为"RTCTransport_video_1"或"RTCTransport_audio_1"的对象。该对象包含当前PeerConnection建立所需要的信息。该对象包含的字段信息如下：
+首先在返回的所有键值对中，最重要的是键值为"RTCTransport_audio_[编号]"、"RTCTransport_video_[编号]"或"RTCTransport_data_[编号]"的对象。该对象包含当前PeerConnection建立所需要的信息。该对象包含的字段信息如下：
 
 字段 | 值类型 | 说明
 ----|------|----
@@ -542,7 +551,7 @@ ended | 布尔 | ？？？
 frameHeight | 数值 | 帧高度
 frameWidth | 数值 | 帧宽度
 framesSent | 数值 | 发送帧总数
-hugeFramesSent | 数值 | ？？？
+hugeFramesSent | 数值 | 发送的巨大帧
 id | 字符串 | 与键名一致
 kind | 字符串 | track类型，视频流值为"video"，音频流值为"audio"
 remoteSource | 布尔  | 是否为远程资源，本地为false，远程为true
@@ -554,14 +563,14 @@ type | 字符串  | 类型说明，常见值为"track"
 
 字段 | 值类型 | 说明
 ----|------|----
-audioLevel | 布尔 | ？？？
+audioLevel | 布尔 | 见W3C标准
 detached | 布尔 | ？？？
 ended | 布尔 | ？？？
 id | 字符串 | 与键名一致
 kind | 字符串 | track类型，视频流值为"video"，音频流值为"audio"
 remoteSource | 布尔  | 是否为远程资源，本地为false，远程为true
-totalAudioEnergy | 数值  | ？？？
-totalSamplesDuration | 数值  | ？？？
+totalAudioEnergy | 数值  | 见W3C标准
+totalSamplesDuration | 数值  | 见W3C标准
 trackIdentifier | 字符串  | 形如"5a1eada8-f9eb-4472-ab97-2a232f311513"
 timestamp | 数值  | 时间戳
 type | 字符串  | 类型说明，常见值为"track"
@@ -617,7 +626,7 @@ kind | 字符串 | 视频流值为"video"
 mediaType | 字符串 |视频流值为"video"
 isRemote | 布尔 |是否为远程
 qpSum | 数值  | 与此RTCRtpStreamStats对象描述的视频轨道上迄今接收的每个帧相关联的量化参数（Quantization Parameter，QP）值的总和。 通常，此数字越高，视频轨道的压缩程度越高。 结合RTCReceivedRtpStreamStats.framesDecoded或RTCSentRtpStreamStats.framesEncoded，您可以近似这些帧的平均QP，请记住编解码器通常会在帧内改变量化器值。另请注意，QP的值可能因编解码器而异，因此只有在与相同的编解码器进行比较时，此值才有用。
-ssrc | 数值  | ？？？
+ssrc | 数值  | 见W3C标准
 trackId | 布尔  | 与"RTCMediaStream_[36位编码]"对象中trackIds中元素一致
 transportId | 布尔  | 与一开始所述的"RTCTransport_video_1"或"RTCTransport_audio_1"对象对应
 timestamp | 数值  | 时间戳
@@ -649,7 +658,7 @@ packetsReceived | 数值 | 包接收数量
 ----|------|----
 clockRate | 数值 | 时钟率
 mimeType | 数值 | 处理的媒体类型
-payloadType | 数值 | ？？？
+payloadType | 数值 | 有效载荷类型，用于RTP编码或解码。
 id | 字符串 | 与键名一致
 timestamp | 数值  | 时间戳
 type | 字符串  | 类型说明，常见值为"codec"
@@ -663,8 +672,8 @@ type | 字符串  | 类型说明，常见值为"codec"
 
 字段 | 值类型 | 说明
 ----|------|----
-dataChannelsClosed | 数值 | 数据通道关闭？？？
-dataChannelsOpened | 数值 | ？？？
+dataChannelsClosed | 数值 | 数据通道关闭
+dataChannelsOpened | 数值 | 数据通道打开
 id | 字符串 | 与键名一致
 timestamp | 数值  | 时间戳
 type | 字符串  | 类型说明，常见值为"peer-connection"
@@ -676,7 +685,7 @@ FireFox对获取stats统计信息进行了优化，给每一条字段都添加�
 FireFox只需要调用一次getStats()方法即可，由于getter的存在，之后每次获取的都是最新的状态，而不用更新整个对象，这对系统性能的提升非常有帮助。
 
 对于getStats()方法返回的对象信息，FireFox提供了直接的[文档说明](http://w3c.github.io/webrtc-pc/#mandatory-to-implement-stats)。
-文档中列出了支持的21种stats类型统计信息以及该stats具有的属性。具体stats以及独有属性（去除通用属性id、type、timestamp和一些继承属性）如下：
+文档中列出了支持的21种stats类型统计信息以及该stats具有的属性。具体stats以及独有属性（去除通用属性id、type、timestamp）如下：
 
 stats类型 | 属性
 ----|------
@@ -702,11 +711,26 @@ RTCIceCandidatePairStats | transportId, localCandidateId, remoteCandidateId, sta
 RTCIceCandidateStats | address, port, protocol, candidateType, url
 RTCCertificateStats | fingerprint, fingerprintAlgorithm, base64Certificate, issuerCertificateId
 
+虽然文档中提供了21种stats，但是FireFox实际中提供的内容较少，只提供ICE协商状态和音频流、视频流传输状态，实际情况如下：
+
+stats类型 | 属性
+----|------
+RTCOutboundRTPAudioStream_local | bytesSent, isRemote, kind, mediaType, nackCount, packetsSent, remoteId, ssrc
+RTCOutboundRTPVideoStream_local | bitrateMean, bitrateStdDev, bytesSent, droppedFrames, firCount, framerateMean, framerateStdDev, framesEncoded, isRemote, kind, mediaType, nackCount, packetsSent, pliCount, remoteId,ssrc
+RTCInboundRTPAudioStream_local | bytesReceived, isRemote, jitter, kind, mediaType, packetsLost, packetsReceived, remoteId, roundTripTime, ssrc
+RTCInboundRTPVideoStream_local | bytesReceived, isRemote, jitter, kind, mediaType, packetsLost, packetsReceived, remoteId, roundTripTime, ssrc
+RTCOutboundRTPAudioStream_remote | bytesSent, isRemote, kind, mediaType, packetsSent, remoteId, ssrc
+RTCOutboundRTPVideoStream_remote | bytesSent, isRemote, kind, mediaType, packetsSent, remoteId, ssrc
+RTCInboundRTPAudioStream_remote | bytesReceived, isRemote, jitter, kind, mediaType, nackCount, packetsLost, packetsReceived, remoteId, ssrc
+RTCInboundRTPVideoStream_remote | bitrateMean, bitrateStdDev, bytesReceived, discardedPackets, firCount, framerateMean, framerateStdDev, framesDecoded, isRemote, jitter, kind, mediaType, nackCount, packetsLost, packetsReceived, pliCount, remoteId, ssrc
+RTCIceCandidatePairStats | bytesReceived, bytesSent, componentId, lastPacketReceivedTimestamp, lastPacketSentTimestamp, localCandidateId, nominated, priority, readable, remoteCandidateId, selected, state, transportId, writable
+RTCIceCandidateStats | _isRemote, portNumber, transport, candidateType, componentId, ipAddress, mozLocalTransport
+
+** 有点奇怪？？？local和remote不一致
+
 ** FireFox中id属性值随机生成，没有固定形式。
 
-### 6. Microsoft Edge下getStats()字段对比
-
-Edge下返回的状态信息较为简单，仅包含7种stats类型。
+### 6. Safari下getStats()字段对比
 
 
 
