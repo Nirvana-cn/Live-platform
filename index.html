@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Live</title>
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         * {
             margin: 0;
@@ -136,7 +136,9 @@
         <div class="wrapper">
             <span>直播页</span>
             <br>
-            <video id="video" autoplay width="640px" height="360px" controls></video>
+            <video id="video" autoplay width="640px" height="360px" controls poster="http://127.0.0.1:3003/bg.jpg">
+                你的浏览器不支持 <code>video</code> 标签
+            </video>
         </div>
         <div class="chat">
             <div class="content">
@@ -214,8 +216,10 @@
             audio: false,
             video: {
                 mandatory: {
-                    maxWidth: 640,
-                    maxHeight: 360
+                    minWidth: 640,
+                    minHeight: 360,
+                    maxWidth: 1280,
+                    maxHeight: 720
                 }
             }
         }

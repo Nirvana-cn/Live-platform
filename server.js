@@ -3,6 +3,7 @@ var fs = require('fs')
 var app = express()
 var liveAddress = null
 var userNames = []
+app.use(express.static('static'))
 app.get('/', function (req, res) {
     fs.readFile('./index.html', function (error, data) {
         res.writeHead(200, {'Content-Type': 'text/html'})
@@ -19,7 +20,7 @@ io.on('connection', function (socket) {
             callback(false)
         } else {
             callback(true)
-            if (data === '1399755191') {
+            if (data === '000') {
                 liveAddress = socket.id
                 socket.emit('live')
             } else {
@@ -54,7 +55,7 @@ io.on('connection', function (socket) {
     })
 
     socket.on('disconnect', function () {
-        if(socket.userName !== '1399755191'){
+        if(socket.userName !== '000'){
             console.log(socket.userName + " has left.")
             if (!socket.userName) return;
             if (userNames.indexOf(socket.userName) > -1) {
