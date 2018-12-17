@@ -726,7 +726,10 @@ RTCInboundRTPVideoStream_remote | bitrateMean, bitrateStdDev, bytesReceived, dis
 RTCIceCandidatePairStats | bytesReceived, bytesSent, componentId, lastPacketReceivedTimestamp, lastPacketSentTimestamp, localCandidateId, nominated, priority, readable, remoteCandidateId, selected, state, transportId, writable
 RTCIceCandidateStats | _isRemote, portNumber, transport, candidateType, componentId, ipAddress, mozLocalTransport
 
-** 有点奇怪？？？local和remote不一致
+chrome中发送方(sender)和接收方(receiver)通常只有inbound或outbound中的一种，但是firefox却有些不一样，
+发送方和接收方都同时具有inbound和outbound的状态信息，照常理来说，
+发送方应该是没有包接收或丢失的状态信息，但是firefox通过roundTripTime(rtt)将接收方的接收信息返回给发送方，
+因此使得发送方也拥有了监控流传输状态的能力，使用isRemote属性来区分接收和发送。
 
 ** FireFox中id属性值随机生成，没有固定形式。
 
