@@ -287,7 +287,9 @@
         console.log('观看直播中')
         console.log('offer 已收到')
         watcher = new RTCPeerConnection()
+//        console.log(data.sdp.sdp)
         let desc = new RTCSessionDescription(data.sdp)
+//        console.log(desc.sdp)
         watcher.setRemoteDescription(desc).then(createAnswer)
         watcher.onaddstream = function (e) {
             document.getElementById("video").srcObject = e.stream
@@ -323,6 +325,10 @@
 
     function createAnswer() {
         watcher.createAnswer().then((answer) => {
+            let str = answer.sdp.replace(/a=msid-semantic: WMS/, 'a=msid-semantic:WMS *')
+            answer.sdp = str
+            console.log(answer.sdp)
+//            console.log(watcher.remoteDescription.sdp)
             watcher.setLocalDescription(answer).then(sendAnswer)
         })
     }
