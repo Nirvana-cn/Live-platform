@@ -5,7 +5,10 @@
     <title>Live</title>
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <!--<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>-->
+    <script src="http://127.0.0.1:3003/adapt.js"></script>
+    <!--<script src="http://127.0.0.1:3003/adapter_hacks.js"></script>-->
+    <script src="http://127.0.0.1:3003/obtainStats.js"></script>
     <style>
         * {
             margin: 0;
@@ -107,7 +110,7 @@
         .sendButton {
             display: inline-block;
             vertical-align: top;
-            width: 46px;
+            width: 45px;
             height: 38px;
             line-height: 38px;
             font-size: 16px;
@@ -232,7 +235,7 @@
         anchor.set(watcherID, new RTCPeerConnection())
         anchor.get(watcherID).addStream(localStream)
         anchor.get(watcherID).createOffer().then((offer) => {
-            anchor.get(watcherID).setLocalDescription(offer).then(sendLiveOffer(watcherID))
+            anchor.get(watcherID).setLocalDescription(offer).then(sendLiveOffer(watcherID,offer))
         })
         anchor.get(watcherID).onicecandidate = function (event) {
             if (event.candidate) {
@@ -250,22 +253,22 @@
         console.log('There is an error: ' + error)
     }
 
-    function sendLiveOffer(targetId) {
-        let sdp = anchor.get(targetId).localDescription
-        let offer = {
+    function sendLiveOffer(targetId,offer) {
+//        let sdp = anchor.get(targetId).localDescription
+        let sendOffer = {
             name: 'anchor',
             target: targetId,
             type: "video-offer",
-            sdp: sdp
+            sdp: offer
         }
-        socket.emit('sendOffer', offer)
+        socket.emit('sendOffer', sendOffer)
         console.log('offer 已发出')
     }
 
     socket.on('watcherAnswer', function (data) {
         console.log('answer 已收到')
-        var desc = new RTCSessionDescription(data.sdp)
-        anchor.get(data.name).setRemoteDescription(desc).then(() => {
+//        var desc = new RTCSessionDescription(data.sdp)
+        anchor.get(data.name).setRemoteDescription(data.sdp).then(() => {
             console.log('PeerConnection success')
         })
     })
@@ -287,10 +290,9 @@
         console.log('观看直播中')
         console.log('offer 已收到')
         watcher = new RTCPeerConnection()
-//        console.log(data.sdp.sdp)
-        let desc = new RTCSessionDescription(data.sdp)
-//        console.log(desc.sdp)
-        watcher.setRemoteDescription(desc).then(createAnswer)
+//        let desc = new RTCSessionDescription(data.sdp)
+//        watcher.setRemoteDescription(desc).then(createAnswer)
+        watcher.setRemoteDescription(data.sdp).then(createAnswer)
         watcher.onaddstream = function (e) {
             document.getElementById("video").srcObject = e.stream
             console.log('add stream success')
@@ -325,20 +327,21 @@
 
     function createAnswer() {
         watcher.createAnswer().then((answer) => {
-            let str = answer.sdp.replace(/a=msid-semantic: WMS/, 'a=msid-semantic:WMS *')
-            answer.sdp = str
-            console.log(answer.sdp)
+//            var str='a=ssrc:3058302899 cname:HihGWrlNlFKu4p2q\n'
+//            answer.sdp += str
+//            console.log(answer.sdp)
+//            console.log('----------')
 //            console.log(watcher.remoteDescription.sdp)
-            watcher.setLocalDescription(answer).then(sendAnswer)
-        })
+            watcher.setLocalDescription(answer).then(sendAnswer(answer))
+        }).catch(rej=>console.log(rej))
     }
 
-    function sendAnswer() {
+    function sendAnswer(answer) {
         socket.emit('sendAnswer', {
             name: userID,
             target: 'anchor',
             type: 'video-answer',
-            sdp: watcher.localDescription
+            sdp: answer
         })
         console.log('answer 已发出')
     }
