@@ -11,8 +11,8 @@ function map2obj(m) {
     return o;
 }
 
-function deltaCompression(oldStats, newStats) {
-    newStats = JSON.parse(JSON.stringify(newStats));
+function deltaCompression(oldStats, newStats) {     // 目的是去除重复且不变的状态，对状态对象进行精简。
+    newStats = JSON.parse(JSON.stringify(newStats));    // 防止引用了外部对象，使用深拷贝来隔离。
     Object.keys(newStats).forEach(function (id) {
         if (!oldStats[id]) {
             return;
