@@ -5,6 +5,18 @@ npm install
 ```
 浏览打开127.0.0.1:3003，主播用户名为 000，开启直播。
 
+获取当前连接状态需要websocket服务器的支持，在wsServer目录下运行，
+
+```
+npm install
+```
+
+安装完成之后运行websocket服务（对于mongodb存储部分代码可先行注释掉）
+
+```
+node server.js
+```
+
 ---
 
 server代码量较少，服务器主要提供数据交换的功能，主要逻辑集中在html页面中。
