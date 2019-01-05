@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Live</title>
+    <link rel="stylesheet" href="http://127.0.0.1:3003/liveInformation.css">
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
     <script src="/socket.io/socket.io.js"></script>
     <!--<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>-->
@@ -123,6 +124,13 @@
         .nameList {
             font-size: 12px;
         }
+
+        .live img {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
     </style>
 </head>
 <body>
@@ -165,11 +173,52 @@
                 </div>
             </div>
         </div>
+        <img src="http://127.0.0.1:3003/arrow.png" width="50" height="50" @click="liveInformationShow">
     </div>
-    <div class="stats" v-show="!flag"></div>
+    <div class="liveInformation" v-show="informationShow">
+        <div class="left">
+            <img src="http://127.0.0.1:3003/arrow.png" width="50" height="50" @click="liveInformationClose">
+        </div>
+        <div class="right">
+            <div class="behaviourShow">
+                <div class="behaviourDetailTop">
+                    <p>Connection Event:</p>
+                    <ul @click="searchContent">
+                        <li v-for="(item,index) in behaviour" :data-address="index">
+                            {{item[item.length-1]==="主播" ? (item[1]===null ? "主播" :
+                            userNamesAll[item[1].split('_')[1]]):item[item.length-1] }} {{item[0]}}
+                        </li>
+                    </ul>
+                </div>
+                <div class="behaviourDetail">
+                    <p>Detail</p>
+                    <div class="behaviourContent">
+                        <div v-if="typeof behaviourContent === 'object'">
+                            <p v-for="(value,key) in behaviourContent">{{key}}:{{value}}</p>
+                        </div>
+                        <div v-else>{{behaviourContent}}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="statsShow">
+                <div class="statsDetailTop">
+                    <div v-for="ele in currentStats" class="statsEle">
+                        <p>Connection Stats {{userNamesAll[ele.count]}}:</p>
+                        <ul>
+                            <li v-for="(value,key) in ele">{{key}}: {{value}}</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="statsDetail">
+                    <p>Detail</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 </body>
 <script>
+    var isFirefox = !!window.mozRTCPeerConnection
     var socket = io.connect()
     var anchor = new Map(), watcher, userID, localStream
     var app = new Vue({
@@ -178,9 +227,14 @@
             flag: true,
             remind: false,
             userName: '',
-            userNames: [],
+            userNames: [],  //当前连接的用户名
+            userNamesAll: [], //所有连接过的用户名
             message: '',
-            messages: []
+            messages: [],
+            behaviour: window._behaviour,
+            behaviourContent: '',
+            currentStats: [],
+            informationShow: false
         },
         watch: {
             messages() {
@@ -209,6 +263,17 @@
                 } else {
                     that.remind = true
                 }
+            },
+            searchContent(event) {
+                console.log(event.target)
+                console.log(this.behaviour[event.target.getAttribute('data-address')])
+                this.behaviourContent = this.behaviour[event.target.getAttribute('data-address')][2]
+            },
+            liveInformationShow() {
+                this.informationShow = true
+            },
+            liveInformationClose() {
+                this.informationShow = false
             }
         }
     })
@@ -236,7 +301,7 @@
         anchor.set(watcherID, new RTCPeerConnection())
         anchor.get(watcherID).addStream(localStream)
         anchor.get(watcherID).createOffer().then((offer) => {
-            anchor.get(watcherID).setLocalDescription(offer).then(sendLiveOffer(watcherID,offer))
+            anchor.get(watcherID).setLocalDescription(offer).then(sendLiveOffer(watcherID, offer))
         })
         anchor.get(watcherID).onicecandidate = function (event) {
             if (event.candidate) {
@@ -254,7 +319,7 @@
         console.log('There is an error: ' + error)
     }
 
-    function sendLiveOffer(targetId,offer) {
+    function sendLiveOffer(targetId, offer) {
 //        let sdp = anchor.get(targetId).localDescription
         let sendOffer = {
             name: 'anchor',
@@ -269,6 +334,7 @@
     socket.on('watcherAnswer', function (data) {
         console.log('answer 已收到')
 //        var desc = new RTCSessionDescription(data.sdp)
+        app.userNamesAll.push(data.userName)
         anchor.get(data.name).setRemoteDescription(data.sdp).then(() => {
             console.log('PeerConnection success')
         })
@@ -334,13 +400,13 @@
 //            console.log('----------')
 //            console.log(watcher.remoteDescription.sdp)
             watcher.setLocalDescription(answer).then(sendAnswer(answer))
-        }).catch(rej=>console.log(rej))
+        }).catch(rej => console.log(rej))
     }
 
     function sendAnswer(answer) {
         socket.emit('sendAnswer', {
             name: userID,
-            target: 'anchor',
+            userName: app.userName,
             type: 'video-answer',
             sdp: answer
         })

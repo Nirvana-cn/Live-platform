@@ -384,6 +384,9 @@ function getStatsInformation(trace, getStatsInterval, prefixesToWrap) {
 };
 
 function wsServer(wsURL) {
+    window._behaviour=[];
+    window._allStats=[];
+    var isFirefox = !!window.mozRTCPeerConnection;
     var buffer = [];
     // var connection = new WebSocket(wsURL);
     var connection = new WebSocket(wsURL + window.location.pathname, '1.0');
@@ -401,6 +404,25 @@ function wsServer(wsURL) {
         var args = Array.prototype.slice.call(arguments);
         args.push(new Date().getTime());
         if (connection.readyState === 1) {
+            if(args[0]==='getstats'){
+                if(isFirefox){
+
+                }else{
+                    let keyArr=Object.keys(args[2]);
+                    let index=keyArr.find(item=>item.includes('ssrc'));
+                    args[2][index].count=args[1].split('_')[1];
+                    if(args[2][index].count>=app.currentStats.length){
+                        app.currentStats.push(args[2][index]);
+                    }else{
+                        Vue.set(app.currentStats,args[2][index].count,args[2][index])
+                    }
+                    window._allStats.push(args[2][index]);
+                }
+            }else{
+                args.push(app.userName);
+                app.behaviourContent=args[2];
+                window._behaviour.unshift(args);
+            }
             connection.send(JSON.stringify(args));
         } else if (args[0] !== 'getstats') {
             buffer.push(args);
