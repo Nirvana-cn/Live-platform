@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <title>Live</title>
     <link rel="stylesheet" href="http://127.0.0.1:3003/liveInformation.css">
+    <link rel="stylesheet" href="http://127.0.0.1:3003/element.css">
+    <!--<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">-->
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <!--<script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
     <script src="/socket.io/socket.io.js"></script>
     <!--<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>-->
     <script src="http://127.0.0.1:3003/adapt.js"></script>
     <!--<script src="http://127.0.0.1:3003/adapter_hacks.js"></script>-->
     <script src="http://127.0.0.1:3003/obtainStats.js"></script>
+    <script src="http://127.0.0.1:3003/element.js"></script>
     <style>
         * {
             margin: 0;
@@ -21,9 +25,17 @@
             background: #ccc;
         }
 
+        h3 {
+            color: #409EFF
+        }
+
         #app {
             width: 100%;
             margin: 100px auto;
+            text-align: center;
+        }
+        .wrapper{
+            color: #409EFF;
             text-align: center;
         }
 
@@ -33,28 +45,7 @@
 
         .nameWrapper {
             font-size: 0;
-            margin-top: 10px;
-        }
-
-        .nameWrapper input {
-            font-size: 20px;
-            line-height: 30px;
-            display: inline-block;
-            vertical-align: top;
-            height: 30px;
-        }
-
-        .nameWrapper button {
-            font-size: 18px;
-            display: inline-block;
-            vertical-align: top;
-            width: 100px;
-            height: 34px;
-        }
-
-        .remind {
-            color: #f00;
-            font-size: 10px;
+            margin-top: 30px;
         }
 
         .live {
@@ -68,18 +59,20 @@
 
         .chat {
             margin: 21px 0 0 10px;
+            flex: 0 0 300px;
         }
 
         .content {
             width: 100%;
             display: flex;
             flex-direction: row;
+            justify-content: flex-start;
             min-height: 360px;
             max-height: 360px;
         }
 
         .container {
-            width: 240px;
+            width: 100%;
             min-height: 320px;
             max-height: 320px;
             overflow-y: scroll;
@@ -96,25 +89,15 @@
 
         .record {
             word-wrap: break-word;
-            word-break: normal;
+            word-break: break-all;
         }
 
         .sendMessage {
+            display: flex;
+            flex-flow: row;
+            justify-content: flex-start;
             font-size: 0;
             margin-top: 5px;
-        }
-
-        .text {
-            font-size: 16px;
-        }
-
-        .sendButton {
-            display: inline-block;
-            vertical-align: top;
-            width: 45px;
-            height: 38px;
-            line-height: 38px;
-            font-size: 16px;
         }
 
         .watcherList {
@@ -136,16 +119,26 @@
 <body>
 <div id="app">
     <div class="login" v-show="flag">
-        <p>观看直播前，请输入您的昵称</p>
+        <h3>观看直播前，请输入您的昵称</h3>
         <div class="nameWrapper">
-            <input type="text" v-model="userName" @keyup.enter="sendName">
-            <button @click="sendName">提交昵称</button>
+            <el-autocomplete
+                    popper-class="autoComplete "
+                    class="input"
+                    v-model="userName"
+                    v-show="flag"
+                    :fetch-suggestions="querySearch"
+                    placeholder="请输入昵称"
+                    @keyup.enter.native="sendName"
+                    @select="handleSelect"
+                    clearable
+                    autofocus
+            ></el-autocomplete>
+            <el-button type="primary" @click="sendName">提交昵称</el-button>
         </div>
-        <p v-show="remind" class="remind">昵称中不能含有任何空白字符，包括空格、制表符</p>
     </div>
     <div class="live" v-show="!flag">
         <div class="wrapper">
-            <span>直播页</span>
+            <h2>直播页</h2>
             <br>
             <video id="video" autoplay width="640px" height="360px" controls poster="http://127.0.0.1:3003/bg.jpg">
                 你的浏览器不支持 <code>video</code> 标签
@@ -156,13 +149,17 @@
                 <div class="message">
                     <div class="container" ref="scroll">
                         <div class="userMessages" v-for="item in messages">
-                            <p class="record">{{item.watcherName}}:{{item.watcherMessage}}</p>
+                            <p class="record">{{item.watcherName}}：{{item.watcherMessage}}</p>
                         </div>
                     </div>
                     <div class="sendMessage">
-                        <textarea id="" cols="22" rows="2" v-model="message" @keyup.enter="sendMessage"
-                                  class="text"></textarea>
-                        <button @click="sendMessage" class="sendButton">发送</button>
+                        <el-input
+                                type="textarea"
+                                :rows="2"
+                                placeholder="请输入内容"
+                                v-model="message">
+                        </el-input>
+                        <el-button type="primary" @click="sendMessage" plain>发送</el-button>
                     </div>
                 </div>
                 <div class="watcherList">
@@ -201,9 +198,10 @@
                 </div>
             </div>
             <div class="statsShow">
+                <p>Connection Stats: </p>
                 <div class="statsDetailTop">
                     <div v-for="ele in currentStats" class="statsEle">
-                        <p>Connection Stats {{userNamesAll[ele.count]}}:</p>
+                        <p>{{userNamesAll[ele.count]}}</p>
                         <ul>
                             <li v-for="(value,key) in ele">{{key}}: {{value}}</li>
                         </ul>
@@ -224,8 +222,8 @@
     var app = new Vue({
         el: '#app',
         data: {
+            show: true,
             flag: true,
-            remind: false,
             userName: '',
             userNames: [],  //当前连接的用户名
             userNamesAll: [], //所有连接过的用户名
@@ -234,7 +232,8 @@
             behaviour: window._behaviour,
             behaviourContent: '',
             currentStats: [],
-            informationShow: false
+            informationShow: false,
+            restaurants: []
         },
         watch: {
             messages() {
@@ -244,6 +243,37 @@
             }
         },
         methods: {
+            openErrorMessage() {
+                this.$message.error('昵称中不能含有任何空白字符，包括空格、制表符！')
+            },
+            openWarnMessage() {
+                this.$message({
+                    message: '对不起，您输入的用户名已存在，请重新输入！',
+                    type: 'warning'
+                });
+            },
+            querySearch(queryString, cb) {
+                var restaurants = this.restaurants;
+                var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants;
+                // 调用 callback 返回建议列表的数据
+                cb(results);
+            },
+            createFilter(queryString) {
+                return (restaurant) => {
+                    return (restaurant.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0);
+                };
+            },
+            loadAll() {
+                return [
+                    {"value": "武鑫"},
+                    {"value": "马云"},
+                    {"value": "梅西"},
+                    {"value": "000"}
+                ]
+            },
+            handleSelect(item) {
+                console.log(item);
+            },
             sendMessage() {
                 let data = {'watcherName': this.userName, 'watcherMessage': this.message}
                 this.messages.push(data)
@@ -255,13 +285,15 @@
                 if (that.userName !== '' && that.userName.search(' ') == -1) {
                     socket.emit('userName', that.userName, function (data) {
                         if (data) {
+                            that.$message.closeAll()
+                            document.querySelector('.autoComplete').style.display = 'none'
                             that.flag = false
                         } else {
-                            alert('对不起，您输入的用户名已存在，请重新输入！')
+                            that.openWarnMessage()
                         }
                     })
                 } else {
-                    that.remind = true
+                    that.openErrorMessage()
                 }
             },
             searchContent(event) {
@@ -275,6 +307,9 @@
             liveInformationClose() {
                 this.informationShow = false
             }
+        },
+        mounted() {
+            this.restaurants = this.loadAll();
         }
     })
 
