@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Live</title>
+    <link rel="stylesheet" href="http://127.0.0.1:3003/index.css">
     <link rel="stylesheet" href="http://127.0.0.1:3003/liveInformation.css">
     <link rel="stylesheet" href="http://127.0.0.1:3003/element.css">
     <!--<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
     <!--<script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
     <script src="/socket.io/socket.io.js"></script>
@@ -14,107 +16,6 @@
     <!--<script src="http://127.0.0.1:3003/adapter_hacks.js"></script>-->
     <script src="http://127.0.0.1:3003/obtainStats.js"></script>
     <script src="http://127.0.0.1:3003/element.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
-
-        body {
-            background: #ccc;
-        }
-
-        h3 {
-            color: #409EFF
-        }
-
-        #app {
-            width: 100%;
-            margin: 100px auto;
-            text-align: center;
-        }
-        .wrapper{
-            color: #409EFF;
-            text-align: center;
-        }
-
-        #video {
-            border: 1px solid #ccc;
-        }
-
-        .nameWrapper {
-            font-size: 0;
-            margin-top: 30px;
-        }
-
-        .live {
-            width: 80%;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: row;
-            justify-content: center;
-            text-align: start;
-        }
-
-        .chat {
-            margin: 21px 0 0 10px;
-            flex: 0 0 300px;
-        }
-
-        .content {
-            width: 100%;
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            min-height: 360px;
-            max-height: 360px;
-        }
-
-        .container {
-            width: 100%;
-            min-height: 320px;
-            max-height: 320px;
-            overflow-y: scroll;
-            background-color: #fff;
-        }
-
-        .container::-webkit-scrollbar {
-            display: none;
-        }
-
-        .userMessages {
-            margin-left: 5px;
-        }
-
-        .record {
-            word-wrap: break-word;
-            word-break: break-all;
-        }
-
-        .sendMessage {
-            display: flex;
-            flex-flow: row;
-            justify-content: flex-start;
-            font-size: 0;
-            margin-top: 5px;
-        }
-
-        .watcherList {
-            margin-left: 10px;
-        }
-
-        .nameList {
-            font-size: 12px;
-        }
-
-        .live img {
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translate(-50%, -50%) rotate(90deg);
-        }
-    </style>
 </head>
 <body>
 <div id="app">
@@ -137,35 +38,33 @@
         </div>
     </div>
     <div class="live" v-show="!flag">
-        <div class="wrapper">
-            <h2>直播页</h2>
-            <br>
-            <video id="video" autoplay width="640px" height="360px" controls poster="http://127.0.0.1:3003/bg.jpg">
-                你的浏览器不支持 <code>video</code> 标签
-            </video>
-        </div>
-        <div class="chat">
-            <div class="content">
-                <div class="message">
-                    <div class="container" ref="scroll">
-                        <div class="userMessages" v-for="item in messages">
-                            <p class="record">{{item.watcherName}}：{{item.watcherMessage}}</p>
+        <div class="liveInner">
+            <div class="wrapper">
+                <video id="video" autoplay width="640px" height="360px" controls poster="http://127.0.0.1:3003/bg.jpg">
+                    你的浏览器不支持 <code>video</code> 标签
+                </video>
+            </div>
+            <div class="chat">
+                <div class="content">
+                    <div class="message">
+                        <div class="container" ref="scroll">
+                            <div class="userMessages" v-for="item in messages">{{item.watcherName}}：{{item.watcherMessage}}</div>
+                        </div>
+                        <div class="sendMessage">
+                            <el-input
+                                    type="textarea"
+                                    :rows="2"
+                                    placeholder="请输入内容"
+                                    v-model="message">
+                            </el-input>
+                            <el-button type="primary" @click="sendMessage" plain>发送</el-button>
                         </div>
                     </div>
-                    <div class="sendMessage">
-                        <el-input
-                                type="textarea"
-                                :rows="2"
-                                placeholder="请输入内容"
-                                v-model="message">
-                        </el-input>
-                        <el-button type="primary" @click="sendMessage" plain>发送</el-button>
-                    </div>
-                </div>
-                <div class="watcherList">
-                    <p>在线{{userNames.length}}人</p>
-                    <div v-for="name in userNames" class="nameList">
-                        <p>{{name}}</p>
+                    <div class="watcherList">
+                        <p>在线{{userNames.length}}人</p>
+                        <div v-for="name in userNames" class="nameList">
+                            <p>{{name}}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -203,12 +102,15 @@
                     <div v-for="ele in currentStats" class="statsEle">
                         <p>{{userNamesAll[ele.count]}}</p>
                         <ul>
-                            <li v-for="(value,key) in ele">{{key}}: {{value}}</li>
+                            <li v-for="(value,key) in ele" v-show="indicator.includes(key)">{{key}}: {{value}}</li>
                         </ul>
                     </div>
                 </div>
                 <div class="statsDetail">
                     <p>Detail</p>
+                    <div v-for="(ele,key) in currentStats" class="canvasWrapper">
+                        <canvas width="100" height="100" :id="'canvas'+key"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -231,15 +133,23 @@
             messages: [],
             behaviour: window._behaviour,
             behaviourContent: '',
+            count:0,
             currentStats: [],
             informationShow: false,
-            restaurants: []
+            restaurants: [],
+            indicator:['mediaType','packetsSent','packetsLost','packetsReceived']
         },
         watch: {
             messages() {
                 this.$nextTick(() => {
                     this.$refs.scroll.scrollTop = this.$refs.scroll.scrollHeight
                 })
+            },
+            currentStats() {
+                if(this.count !== this.currentStats.length){
+                    this.createCanvas()
+                    this.count=this.currentStats.length
+                }
             }
         },
         methods: {
@@ -265,20 +175,22 @@
             },
             loadAll() {
                 return [
-                    {"value": "武鑫"},
+                    {"value": "赵云"},
                     {"value": "马云"},
                     {"value": "梅西"},
                     {"value": "000"}
                 ]
             },
             handleSelect(item) {
-                console.log(item);
+//                console.log(item);
             },
             sendMessage() {
-                let data = {'watcherName': this.userName, 'watcherMessage': this.message}
-                this.messages.push(data)
-                socket.emit('sendMessage', data)
-                this.message = ''
+                if(this.message!==''){
+                    let data = {'watcherName': this.userName, 'watcherMessage': this.message}
+                    this.messages.push(data)
+                    socket.emit('sendMessage', data)
+                    this.message = ''
+                }
             },
             sendName() {
                 var that = this
@@ -306,6 +218,35 @@
             },
             liveInformationClose() {
                 this.informationShow = false
+            },
+            createCanvas() {
+                var ctx = document.getElementById('canvas0').getContext('2d')
+                var chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ["1", "2", "3", "4", "5", "6", "7"],
+                        datasets: [{
+                            label: "My First dataset",
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: [0, 1, 5, 2, 10, 15,17]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        legend:{
+                            display:false
+                        },
+                        layout:{
+                            padding:{
+                                left:0,
+                                right:0,
+                                top:0,
+                                bottom:30
+                            }
+                        }
+                    }
+                })
             }
         },
         mounted() {

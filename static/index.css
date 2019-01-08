@@ -1,0 +1,107 @@
+* {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body {
+    background: #ccc;
+}
+
+h3 {
+    color: #409EFF
+}
+
+#app {
+    width: 100%;
+    margin: 100px auto;
+    text-align: center;
+}
+.wrapper{
+    font-size: 0;
+}
+
+.nameWrapper {
+    font-size: 0;
+    margin-top: 30px;
+}
+.live{
+    padding-left:100px;
+}
+
+.liveInner {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.chat {
+    margin-left:20px;
+    flex: 0 0 auto;
+    height:360px;
+    vertical-align: bottom;
+}
+
+.content {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    min-height: 360px;
+    max-height: 360px;
+}
+.message{
+    width:260px;
+    display: flex;
+    flex-flow: column;
+    justify-content: flex-start;
+}
+
+.container {
+    width: 100%;
+    overflow-y: scroll;
+    background-color: #fff;
+    text-align: start;
+    flex: 1 1 auto;
+}
+
+.container::-webkit-scrollbar {
+    display: none;
+}
+
+.userMessages {
+    box-sizing: border-box;
+    padding-left:5px;
+    width:100%;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    /*overflow: hidden;*/
+}
+
+.sendMessage {
+    width:100%;
+    display: flex;
+    flex-flow: row;
+    justify-content: flex-start;
+    font-size: 0;
+    margin-top: 5px;
+    flex: 0 0 55px;
+}
+
+.watcherList {
+    margin-left: 10px;
+    text-align: start;
+}
+
+.nameList {
+    font-size: 12px;
+}
+
+.live img {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+}

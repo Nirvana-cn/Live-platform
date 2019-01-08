@@ -58,7 +58,11 @@
 }
 .statsDetail{
     height:50%;
-    overflow-y: scroll;
     border-top: 1px dashed #ccc;
+    overflow: scroll;
+}
+.canvasWrapper{
+    width:200px;
+    height:200px;
 }
 

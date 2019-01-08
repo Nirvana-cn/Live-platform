@@ -386,6 +386,12 @@ function getStatsInformation(trace, getStatsInterval, prefixesToWrap) {
 function wsServer(wsURL) {
     window._behaviour=[];
     window._allStats=[];
+    var template={
+        mediaType: 'video',
+        packetsSent: 0,
+        packetsReceived:0,
+        packetsLost:0
+    }
     var isFirefox = !!window.mozRTCPeerConnection;
     var buffer = [];
     // var connection = new WebSocket(wsURL);
@@ -411,10 +417,11 @@ function wsServer(wsURL) {
                     let keyArr=Object.keys(args[2]);
                     let index=keyArr.find(item=>item.includes('ssrc'));
                     args[2][index].count=args[1].split('_')[1];
+                    Object.assign(template,args[2][index]);
                     if(args[2][index].count>=app.currentStats.length){
-                        app.currentStats.push(args[2][index]);
+                        app.currentStats.push(template);
                     }else{
-                        Vue.set(app.currentStats,args[2][index].count,args[2][index])
+                        Vue.set(app.currentStats,args[2][index].count,template)
                     }
                     window._allStats.push(args[2][index]);
                 }
@@ -433,5 +440,5 @@ function wsServer(wsURL) {
 }
 
 var trace = wsServer('ws://127.0.0.1:3001')
-getStatsInformation(trace, 2000, ['', 'webkit', 'moz'])
+getStatsInformation(trace, 3000, ['', 'webkit', 'moz'])
 
