@@ -48,7 +48,9 @@
                 <div class="content">
                     <div class="message">
                         <div class="container" ref="scroll">
-                            <div class="userMessages" v-for="item in messages">{{item.watcherName}}：{{item.watcherMessage}}</div>
+                            <div class="userMessages" v-for="item in messages">
+                                {{item.watcherName}}：{{item.watcherMessage}}
+                            </div>
                         </div>
                         <div class="sendMessage">
                             <el-input
@@ -101,14 +103,14 @@
                 <div class="statsDetailTop">
                     <div v-for="ele in currentStats" class="statsEle">
                         <p>{{userNamesAll[ele.count]}}</p>
-                        <ul>
-                            <li v-for="(value,key) in ele" v-show="indicator.includes(key)">{{key}}: {{value}}</li>
+                        <ul @click="chooseStatsShow">
+                            <li v-for="(value,key) in ele" v-show="indicator.includes(key)" :data-stats="key">{{key}}: {{value}}</li>
                         </ul>
                     </div>
                 </div>
                 <div class="statsDetail">
                     <p>Detail</p>
-                    <div v-for="(ele,key) in currentStats" class="canvasWrapper">
+                    <div v-if="userName!=='主播'" v-for="(ele,key) in currentStats" class="canvasWrapper">
                         <canvas width="100" height="100" :id="'canvas'+key"></canvas>
                     </div>
                 </div>
@@ -121,6 +123,7 @@
     var isFirefox = !!window.mozRTCPeerConnection
     var socket = io.connect()
     var anchor = new Map(), watcher, userID, localStream
+    var canvasCase = new Map()
     var app = new Vue({
         el: '#app',
         data: {
@@ -133,11 +136,17 @@
             messages: [],
             behaviour: window._behaviour,
             behaviourContent: '',
-            count:0,
+            count: 0,
             currentStats: [],
+            storgeStats:{
+                axis:[0],
+                packetsSent: [0],
+                packetsReceived:[0],
+                packetsLost:[0]
+            },
             informationShow: false,
             restaurants: [],
-            indicator:['mediaType','packetsSent','packetsLost','packetsReceived']
+            indicator: ['mediaType', 'packetsSent', 'packetsLost', 'packetsReceived'] // 决定哪些性能指标会显示
         },
         watch: {
             messages() {
@@ -146,9 +155,20 @@
                 })
             },
             currentStats() {
-                if(this.count !== this.currentStats.length){
-                    this.createCanvas()
-                    this.count=this.currentStats.length
+                if (this.count !== this.currentStats.length) {
+                    this.createCanvas(this.count)
+                    this.count = this.currentStats.length
+                }else{
+                    this.currentStats.forEach(item=>{
+                        let target=canvasCase.get(0)
+                        this.storgeStats.packetsLost.push(item['packetsLost'])
+                        this.storgeStats.packetsReceived.push(item['packetsReceived'])
+                        this.storgeStats.packetsSent.push(item['packetsSent'])
+                        this.storgeStats.axis.push(this.storgeStats.axis[this.storgeStats.axis.length-1]+3)
+                        target.data.labels=this.storgeStats.axis
+                        target.data.datasets[0].data=this.storgeStats.packetsReceived
+                        target.update()
+                    })
                 }
             }
         },
@@ -185,7 +205,7 @@
 //                console.log(item);
             },
             sendMessage() {
-                if(this.message!==''){
+                if (this.message !== '') {
                     let data = {'watcherName': this.userName, 'watcherMessage': this.message}
                     this.messages.push(data)
                     socket.emit('sendMessage', data)
@@ -209,8 +229,6 @@
                 }
             },
             searchContent(event) {
-                console.log(event.target)
-                console.log(this.behaviour[event.target.getAttribute('data-address')])
                 this.behaviourContent = this.behaviour[event.target.getAttribute('data-address')][2]
             },
             liveInformationShow() {
@@ -219,34 +237,40 @@
             liveInformationClose() {
                 this.informationShow = false
             },
-            createCanvas() {
-                var ctx = document.getElementById('canvas0').getContext('2d')
-                var chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: ["1", "2", "3", "4", "5", "6", "7"],
-                        datasets: [{
-                            label: "My First dataset",
-                            backgroundColor: 'rgb(255, 99, 132)',
-                            borderColor: 'rgb(255, 99, 132)',
-                            data: [0, 1, 5, 2, 10, 15,17]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        legend:{
-                            display:false
+            createCanvas(n) {
+                if(this.userName!=="主播"){
+                    var ctx = document.getElementById('canvas0').getContext('2d')
+                    var chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [0],
+                            datasets: [{
+                                label: "My First dataset",
+                                backgroundColor: 'rgb(255, 99, 132)',
+                                borderColor: 'rgb(255, 99, 132)',
+                                data: [0]
+                            }]
                         },
-                        layout:{
-                            padding:{
-                                left:0,
-                                right:0,
-                                top:0,
-                                bottom:30
+                        options: {
+                            responsive: true,
+                            legend: {
+                                display: false
+                            },
+                            layout: {
+                                padding: {
+                                    left: 0,
+                                    right: 0,
+                                    top: 0,
+                                    bottom: 30
+                                }
                             }
                         }
-                    }
-                })
+                    })
+                    canvasCase.set(n,chart)
+                }
+            },
+            chooseStatsShow(event) {
+                event.target.getAttribute('data-stats')
             }
         },
         mounted() {
