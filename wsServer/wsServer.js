@@ -1,6 +1,6 @@
-var behaviourOperation = require('./databaseOperation/__connectDatabase_connection_behaviour')
-var statsOperation = require('./databaseOperation/__connectDatabase_connection_stats')
-var conferenceOperation =require('./databaseOperation/__connectDatabase_conference_information')
+// var behaviourOperation = require('./databaseOperation/__connectDatabase_connection_behaviour')
+// var statsOperation = require('./databaseOperation/__connectDatabase_connection_stats')
+// var conferenceOperation =require('./databaseOperation/__connectDatabase_conference_information')
 var WebSocketServer = require('ws').Server
 var server = new WebSocketServer({port: 3001})
 
@@ -20,13 +20,13 @@ server.on('connection', function (ws, request) {
     })
 
     ws.on('message', function (message) {
-        // console.log('receive message from client: ' + message + '\n')
-        let temp = JSON.parse(message)
-        if (temp[0] === 'getstats') {
-            statsOperation.insertData({userId: '123', stats: message, timeStamp: new Date()})
-        } else {
-            behaviourOperation.insertData({userId: '123', behavior: message, timeStamp: new Date()})
-        }
+        console.log('receive message from client: ' + message + '\n')
+        // let temp = JSON.parse(message)
+        // if (temp[0] === 'getstats') {
+        //     statsOperation.insertData({userId: '123', stats: message, timeStamp: new Date()})
+        // } else {
+        //     behaviourOperation.insertData({userId: '123', behavior: message, timeStamp: new Date()})
+        // }
     })
 })
 
