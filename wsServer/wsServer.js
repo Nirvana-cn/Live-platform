@@ -20,7 +20,7 @@ server.on('connection', function (ws, request) {
     })
 
     ws.on('message', function (message) {
-        console.log('receive message from client: ' + message + '\n')
+        // console.log('receive message from client: ' + message + '\n')
         // let temp = JSON.parse(message)
         // if (temp[0] === 'getstats') {
         //     statsOperation.insertData({userId: '123', stats: message, timeStamp: new Date()})

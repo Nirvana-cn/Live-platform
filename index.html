@@ -9,13 +9,13 @@
     <!--<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
-    <!--<script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
     <script src="/socket.io/socket.io.js"></script>
-    <!--<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>-->
     <script src="http://127.0.0.1:3003/adapt.js"></script>
     <!--<script src="http://127.0.0.1:3003/adapter_hacks.js"></script>-->
+    <!--<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>-->
     <script src="http://127.0.0.1:3003/obtainStats.js"></script>
     <script src="http://127.0.0.1:3003/element.js"></script>
+    <!--<script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
 </head>
 <body>
 <div id="app">
@@ -120,7 +120,6 @@
 </div>
 </body>
 <script>
-    var isFirefox = !!window.mozRTCPeerConnection
     var socket = io.connect()
     var anchor = new Map(), watcher, userID, localStream, canvasCase
     var app = new Vue({
@@ -141,11 +140,16 @@
                 axis:[0],
                 packetsSent: [0],
                 packetsReceived:[0],
-                packetsLost:[0]
+                packetsLost:[0],
+                bitrateMean:[0],
+                bitrateStdDev:[0],
+                discardedPackets:[0],
+                firCount:[0],
+                jitter:[0]
             },
             informationShow: false,
             restaurants: [],
-            indicator: ['mediaType', 'packetsSent', 'packetsLost', 'packetsReceived'] // 决定哪些性能指标会显示
+            indicator: ['mediaType', 'packetsSent', 'packetsLost', 'packetsReceived','bitrateMean','bitrateStdDev','discardedPackets','firCount','jitter'] // 决定哪些性能指标会显示
         },
         watch: {
             messages() {
@@ -166,10 +170,14 @@
                             })
                         }
                         this.currentStats.forEach(item=>{
-                            this.storgeStats.packetsLost.push(item['packetsLost'])
-                            this.storgeStats.packetsReceived.push(item['packetsReceived'])
-                            this.storgeStats.packetsSent.push(item['packetsSent'])
-                            this.storgeStats.axis.push(this.storgeStats.axis[this.storgeStats.axis.length-1]+3)
+                            let keys=Object.keys(this.storgeStats)
+                            keys.forEach(ele=>{
+                                if(ele==='axis'){
+                                    this.storgeStats[ele].push(this.storgeStats.axis[this.storgeStats.axis.length-1]+3)
+                                }else{
+                                    this.storgeStats[ele].push(item[ele])
+                                }
+                            })
                             canvasCase.data.labels=this.storgeStats.axis
                             canvasCase.data.datasets[0].data=this.storgeStats[canvasCase.data.datasets[0].label]
                             canvasCase.update()
@@ -201,8 +209,8 @@
             },
             loadAll() {
                 return [
-                    {"value": "赵云"},
-                    {"value": "吕布"},
+                    {"value": "美国队长"},
+                    {"value": "鸣人"},
                     {"value": "梅西"},
                     {"value": "000"}
                 ]

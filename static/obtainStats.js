@@ -385,13 +385,7 @@ function getStatsInformation(trace, getStatsInterval, prefixesToWrap) {
 
 function wsServer(wsURL) {
     window._behaviour=[];
-    window._allStats=[];
-    var template={
-        mediaType: 'video',
-        packetsSent: 0,
-        packetsReceived:0,
-        packetsLost:0
-    }
+
     var isFirefox = !!window.mozRTCPeerConnection;
     var buffer = [];
     // var connection = new WebSocket(wsURL);
@@ -412,18 +406,45 @@ function wsServer(wsURL) {
         if (connection.readyState === 1) {
             if(args[0]==='getstats'){
                 if(isFirefox){
-
+                    let _template={
+                        mediaType: 'video',
+                        packetsSent: 0,
+                        packetsReceived:0,
+                        packetsLost:0,
+                        bitrateMean: 0,
+                        bitrateStdDev:0,
+                        discardedPackets:0,
+                        firCount:0,
+                        jitter:0
+                    }
+                    // console.log(args[2])
+                    let keyArr=Object.keys(args[2]);
+                    let index=keyArr.filter(item=>item.includes('bound'));
+                    index.forEach(element=>{
+                        Object.assign(_template,args[2][element]);
+                    })
+                    _template.count=args[1].split('_')[1];
+                    if(_template.count>=app.currentStats.length){
+                        app.currentStats.push(_template);
+                    }else{
+                        Vue.set(app.currentStats,_template.count,_template)
+                    }
                 }else{
+                    let _template={
+                        mediaType: 'video',
+                        packetsSent: 0,
+                        packetsReceived:0,
+                        packetsLost:0
+                    }
                     let keyArr=Object.keys(args[2]);
                     let index=keyArr.find(item=>item.includes('ssrc'));
                     args[2][index].count=args[1].split('_')[1];
-                    Object.assign(template,args[2][index]);
+                    Object.assign(_template,args[2][index]);
                     if(args[2][index].count>=app.currentStats.length){
-                        app.currentStats.push(template);
+                        app.currentStats.push(_template);
                     }else{
-                        Vue.set(app.currentStats,args[2][index].count,template)
+                        Vue.set(app.currentStats,args[2][index].count,_template)
                     }
-                    window._allStats.push(args[2][index]);
                 }
             }else{
                 args.push(app.userName);
