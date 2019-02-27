@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>webrtc template</title>
+</head>
+<body>
+<div>
+    <video id="video" width="640px" height="360px" autoplay controls></video>
+    <fieldset>
+        <legend>服务器</legend>
+        <button id="start" onclick="startPeer()">Start</button>
+    </fieldset>
+    <br>
+    <fieldset>
+        <legend>观看方</legend>
+        <button id="watch" onclick="startWatch()">Watch</button>
+    </fieldset>
+</div>
+<script>
+    let pc1, pc2, ws, localStream
+
+    function startPeer() {
+        document.querySelector('#start').disabled = true
+        ws = new WebSocket('ws://127.0.0.1:3001');
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: 'connect',
+                from: 'pc1',
+                to: null,
+                data: null
+            }));
+        }
+        ws.onmessage = function (res) {
+            let temp = JSON.parse(res.data)
+            if (temp.type === 'answer') {
+                console.log('收到answer...')
+                pc1.setRemoteDescription(temp.data).then(function () {
+                    console.log('Peer Connection is success...')
+                })
+            } else if (temp.type === 'candidate') {
+                console.log('收到candidate...')
+                pc1.addIceCandidate(new RTCIceCandidate(temp.data)).then(() => {
+                    console.log('candidate添加成功')
+                }).catch(handleError)
+            } else if (temp.type === 'watch') {
+                pc1_createOffer()
+            }
+        }
+        navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true
+        }).then(handleSuccess).catch(handleError)
+
+        function handleSuccess(stream) {
+            document.getElementById("video").srcObject = stream
+            localStream = stream
+            pc1 = new RTCPeerConnection()
+            pc1.addStream(stream)
+            pc1.onicecandidate = function (event) {
+                console.log('发送candidate...')
+                if (event.candidate) {
+                    sendInfo({
+                        type: 'candidate',
+                        from: 'pc1',
+                        to: 'pc2',
+                        data: event.candidate
+                    })
+                }
+            }
+            pc1.onnegotiationneeded = function () {
+                console.log('需要协商...')
+            }
+        }
+
+        function handleError(err) {
+            console.log(err)
+        }
+    }
+
+    function startWatch() {
+        document.querySelector('#watch').disabled = true
+        ws = new WebSocket('ws://127.0.0.1:3001');
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: 'connect',
+                from: 'pc2',
+                to: null,
+                data: null
+            }));
+            ws.send(JSON.stringify({
+                type: 'watch',
+                from: 'pc2',
+                to: 'pc1',
+                data: null
+            }))
+        }
+        ws.onmessage = function (res) {
+            let temp = JSON.parse(res.data)
+            if (temp.type === 'offer') {
+                console.log('收到offer...')
+                pc2 = new RTCPeerConnection()
+                pc2.onaddstream = function (e) {
+                    console.log('获得应答方的视频流' + e.stream)
+                    document.getElementById("video").srcObject = e.stream
+                }
+                pc2.onicecandidate = function (event) {
+                    console.log('发送candidate...')
+                    if (event.candidate) {
+                        sendInfo({
+                            type: 'candidate',
+                            from: 'pc2',
+                            to: 'pc1',
+                            data: event.candidate
+                        })
+                    }
+                }
+                pc2.onnegotiationneeded = function () {
+                    console.log('需要协商...')
+                }
+                pc2.setRemoteDescription(temp.data).then(function () {
+                    pc2_createAnswer()
+                })
+            } else if (temp.type === 'candidate') {
+                console.log('收到candidate...')
+                pc2.addIceCandidate(new RTCIceCandidate(temp.data)).then(() => {
+                    console.log('candidate添加成功')
+                })
+            }
+        }
+    }
+
+    function pc1_createOffer() {
+        pc1.createOffer().then((offer) => {
+            pc1.setLocalDescription(offer).then(() => {
+                console.log('发送offer...')
+                sendInfo({
+                    type: 'offer',
+                    from: 'pc1',
+                    to: 'pc2',
+                    data: offer
+                })
+            })
+        })
+    }
+
+    function pc2_createAnswer() {
+        pc2.createAnswer().then((answer) => {
+            pc2.setLocalDescription(answer).then(() => {
+                sendInfo({
+                    type: 'answer',
+                    from: 'pc2',
+                    to: 'pc1',
+                    data: answer
+                })
+            })
+        })
+    }
+
+    function sendInfo(info) {
+        ws.send(JSON.stringify(info))
+    }
+</script>
+</body>
+</html>
