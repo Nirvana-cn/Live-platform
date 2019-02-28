@@ -10,8 +10,8 @@
     <fieldset>
         <legend>服务器</legend>
         <button id="start" onclick="startPeer()">Start</button>
-        <button id="stop" onclick="stopVideo()">Stop</button>
-        <button id="stop" onclick="startVideo()">Video</button>
+        <button onclick="stopVideo()">Stop</button>
+        <button onclick="startVideo()">Video</button>
     </fieldset>
     <br>
     <fieldset>
@@ -20,7 +20,7 @@
     </fieldset>
 </div>
 <script>
-    let pc1, pc2, ws, localStream,flag
+    let pc1, pc2, ws, localStream, flag
 
     function startPeer() {
         document.querySelector('#start').disabled = true

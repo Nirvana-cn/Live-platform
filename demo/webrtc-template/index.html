@@ -18,7 +18,7 @@
     </fieldset>
 </div>
 <script>
-    let pc1, pc2, ws, localStream
+    let pc1, pc2, ws, localStream, flag, sender
 
     function startPeer() {
         document.querySelector('#start').disabled = true
@@ -56,7 +56,8 @@
             document.getElementById("video").srcObject = stream
             localStream = stream
             pc1 = new RTCPeerConnection()
-            pc1.addStream(stream)
+            let track = stream.getTracks()[0]
+            sender = pc1.addTrack(track,stream)
             pc1.onicecandidate = function (event) {
                 console.log('发送candidate...')
                 if (event.candidate) {
@@ -68,7 +69,7 @@
                     })
                 }
             }
-            pc1.onnegotiationneeded = function () {
+            pc1.onnegotiationneeded=function () {
                 console.log('需要协商...')
             }
         }
@@ -88,21 +89,38 @@
                 to: null,
                 data: null
             }));
-            ws.send(JSON.stringify({
-                type: 'watch',
-                from: 'pc2',
-                to: 'pc1',
-                data: null
-            }))
+            setTimeout(() => {
+                ws.send(JSON.stringify({
+                    type: 'watch',
+                    from: 'pc2',
+                    to: 'pc1',
+                    data: null
+                }))
+            }, 500)
         }
         ws.onmessage = function (res) {
             let temp = JSON.parse(res.data)
             if (temp.type === 'offer') {
                 console.log('收到offer...')
+                if(pc2){
+                    pc2.setRemoteDescription(temp.data).then(function () {
+                        pc2.createAnswer().then((answer) => {
+                            pc2.setLocalDescription(answer).then(() => {
+                                sendInfo({
+                                    type: 'answer',
+                                    from: 'pc2',
+                                    to: 'pc1',
+                                    data: answer
+                                })
+                            })
+                        })
+                    })
+                    return
+                }
                 pc2 = new RTCPeerConnection()
-                pc2.onaddstream = function (e) {
-                    console.log('获得应答方的视频流' + e.stream)
-                    document.getElementById("video").srcObject = e.stream
+                pc2.ontrack = function (e) {
+                    console.log('获得应答方的视频流...', e.streams)
+                    document.getElementById("video").srcObject = e.streams[0]
                 }
                 pc2.onicecandidate = function (event) {
                     console.log('发送candidate...')
@@ -115,7 +133,7 @@
                         })
                     }
                 }
-                pc2.onnegotiationneeded = function () {
+                pc2.onnegotiationneeded=function() {
                     console.log('需要协商...')
                 }
                 pc2.setRemoteDescription(temp.data).then(function () {
