@@ -193,13 +193,14 @@
             audio: false,
             video: {
                 width: 640 * ratio,
-                height: 360 * ratio
+                height: 360 * ratio,
+                frameRate: 10 * ratio
             }
         }).then((stream) => {
             document.getElementById("video").srcObject = stream
             localStream = stream
             let track = stream.getTracks()[0]
-            sender.replaceTrack(track).then(()=>{
+            sender.replaceTrack(track).then(() => {
                 console.log('replace track success...')
             })
         }).catch((err) => {
