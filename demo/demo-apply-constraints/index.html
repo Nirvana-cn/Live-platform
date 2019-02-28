@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>change resolution by applyConstraints</title>
+</head>
+<body>
+<div>
+    <video id="video" width="1280px" height="720px" autoplay controls></video>
+    <fieldset>
+        <legend>服务器</legend>
+        <button id="start" onclick="startPeer()">Start</button>
+        <button onclick="changeResolution(1)">360p</button>
+        <button onclick="changeResolution(2)">720p</button>
+        <button onclick="changeResolution(3)">1080p</button>
+    </fieldset>
+    <br>
+    <fieldset>
+        <legend>观看方</legend>
+        <button id="watch" onclick="startWatch()">Watch</button>
+    </fieldset>
+</div>
+<script>
+    let pc1, pc2, ws, localStream, flag, sender
+
+    function startPeer() {
+        document.querySelector('#start').disabled = true
+        ws = new WebSocket('ws://127.0.0.1:3001');
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: 'connect',
+                from: 'pc1',
+                to: null,
+                data: null
+            }));
+        }
+        ws.onmessage = function (res) {
+            let temp = JSON.parse(res.data)
+            if (temp.type === 'answer') {
+                console.log('收到answer...')
+                pc1.setRemoteDescription(temp.data).then(function () {
+                    console.log('Peer Connection is success...')
+                })
+            } else if (temp.type === 'candidate') {
+                console.log('收到candidate...')
+                pc1.addIceCandidate(new RTCIceCandidate(temp.data)).then(() => {
+                    console.log('candidate添加成功')
+                }).catch(handleError)
+            } else if (temp.type === 'watch') {
+                pc1_createOffer()
+            }
+        }
+        navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true
+        }).then(handleSuccess).catch(handleError)
+
+        function handleSuccess(stream) {
+            document.getElementById("video").srcObject = stream
+            localStream = stream
+            pc1 = new RTCPeerConnection()
+            let track = stream.getTracks()[0]
+            sender = pc1.addTrack(track, stream)
+            pc1.onicecandidate = function (event) {
+                console.log('发送candidate...')
+                if (event.candidate) {
+                    sendInfo({
+                        type: 'candidate',
+                        from: 'pc1',
+                        to: 'pc2',
+                        data: event.candidate
+                    })
+                }
+            }
+            pc1.onnegotiationneeded = function () {
+                console.log('需要协商...')
+                if (flag) {
+                    pc1_createOffer()
+                }
+            }
+        }
+
+        function handleError(err) {
+            console.log(err)
+        }
+    }
+
+    function startWatch() {
+        document.querySelector('#watch').disabled = true
+        ws = new WebSocket('ws://127.0.0.1:3001');
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: 'connect',
+                from: 'pc2',
+                to: null,
+                data: null
+            }));
+            setTimeout(() => {
+                ws.send(JSON.stringify({
+                    type: 'watch',
+                    from: 'pc2',
+                    to: 'pc1',
+                    data: null
+                }))
+            }, 500)
+        }
+        ws.onmessage = function (res) {
+            let temp = JSON.parse(res.data)
+            if (temp.type === 'offer') {
+                console.log('收到offer...')
+                if (pc2) {
+                    pc2.setRemoteDescription(temp.data).then(function () {
+                        pc2.createAnswer().then((answer) => {
+                            pc2.setLocalDescription(answer).then(() => {
+                                sendInfo({
+                                    type: 'answer',
+                                    from: 'pc2',
+                                    to: 'pc1',
+                                    data: answer
+                                })
+                            })
+                        })
+                    })
+                    return
+                }
+                pc2 = new RTCPeerConnection()
+                pc2.ontrack = function (e) {
+                    console.log('获得应答方的视频流...', e.streams)
+                    document.getElementById("video").srcObject = e.streams[0]
+                }
+                pc2.onicecandidate = function (event) {
+                    console.log('发送candidate...')
+                    if (event.candidate) {
+                        sendInfo({
+                            type: 'candidate',
+                            from: 'pc2',
+                            to: 'pc1',
+                            data: event.candidate
+                        })
+                    }
+                }
+                pc2.onnegotiationneeded = function () {
+                    console.log('需要协商...')
+                }
+                pc2.setRemoteDescription(temp.data).then(function () {
+                    pc2_createAnswer()
+                })
+            } else if (temp.type === 'candidate') {
+                console.log('收到candidate...')
+                pc2.addIceCandidate(new RTCIceCandidate(temp.data)).then(() => {
+                    console.log('candidate添加成功')
+                })
+            }
+        }
+    }
+
+    function pc1_createOffer() {
+        pc1.createOffer().then((offer) => {
+            pc1.setLocalDescription(offer).then(() => {
+                console.log('发送offer...')
+                sendInfo({
+                    type: 'offer',
+                    from: 'pc1',
+                    to: 'pc2',
+                    data: offer
+                })
+            })
+        })
+    }
+
+    function pc2_createAnswer() {
+        pc2.createAnswer().then((answer) => {
+            pc2.setLocalDescription(answer).then(() => {
+                sendInfo({
+                    type: 'answer',
+                    from: 'pc2',
+                    to: 'pc1',
+                    data: answer
+                })
+            })
+        })
+    }
+
+    function sendInfo(info) {
+        ws.send(JSON.stringify(info))
+    }
+
+    function changeResolution(ratio) {
+        console.log(ratio)
+        // width、height、frameRate都可以设置为一个对象，具有min、max、ideal属性
+        const constraints = {
+            width: 640 * ratio,
+            height: 360 * ratio,
+            frameRate: 10 * ratio
+        }
+        pc1.getSenders()[0].track.applyConstraints(constraints).then(() => {
+            console.log('resolution change success...')
+        })
+    }
+</script>
+</body>
+</html>
