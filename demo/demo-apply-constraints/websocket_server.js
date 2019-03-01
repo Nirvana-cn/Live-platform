@@ -34,6 +34,14 @@ method.set('candidate',function (ws,obj) {
     console.log('candidate处理成功...')
 })
 
+method.set('resolution',function (ws,obj) {
+    storage.get(obj.to).send(JSON.stringify({
+        type:'resolution',
+        data:obj.data
+    }))
+    console.log('candidate处理成功...')
+})
+
 
 const server = new WebSocket.Server({ port: 3001 })
 

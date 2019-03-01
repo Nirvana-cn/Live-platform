@@ -18,6 +18,9 @@
     <fieldset>
         <legend>观看方</legend>
         <button id="watch" onclick="startWatch()">Watch</button>
+        <button onclick="requestResolution(1)">360p</button>
+        <button onclick="requestResolution(2)">720p</button>
+        <button onclick="requestResolution(3)">1080p</button>
     </fieldset>
 </div>
 <script>
@@ -48,6 +51,8 @@
                 }).catch(handleError)
             } else if (temp.type === 'watch') {
                 pc1_createOffer()
+            } else if (temp.type === 'resolution') {
+                changeResolution(temp.data)
             }
         }
         navigator.mediaDevices.getUserMedia({
@@ -195,6 +200,15 @@
         }
         pc1.getSenders()[0].track.applyConstraints(constraints).then(() => {
             console.log('resolution change success...')
+        })
+    }
+
+    function requestResolution(ratio) {
+        sendInfo({
+            type: 'resolution',
+            from: 'pc2',
+            to: 'pc1',
+            data: ratio
         })
     }
 </script>

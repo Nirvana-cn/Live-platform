@@ -19,6 +19,7 @@
 </div>
 <script>
     let pc1, pc2, ws, localStream, flag, sender
+    let method = new Map();
 
     function startPeer() {
         document.querySelector('#start').disabled = true
@@ -31,21 +32,9 @@
                 data: null
             }));
         }
-        ws.onmessage = function (res) {
-            let temp = JSON.parse(res.data)
-            if (temp.type === 'answer') {
-                console.log('收到answer...')
-                pc1.setRemoteDescription(temp.data).then(function () {
-                    console.log('Peer Connection is success...')
-                })
-            } else if (temp.type === 'candidate') {
-                console.log('收到candidate...')
-                pc1.addIceCandidate(new RTCIceCandidate(temp.data)).then(() => {
-                    console.log('candidate添加成功')
-                }).catch(handleError)
-            } else if (temp.type === 'watch') {
-                pc1_createOffer()
-            }
+        ws.onmessage = function (message) {
+            let temp = JSON.parse(message.data)
+            method.get(temp.type)(pc1, temp.data)
         }
         navigator.mediaDevices.getUserMedia({
             audio: false,
@@ -57,7 +46,7 @@
             localStream = stream
             pc1 = new RTCPeerConnection()
             let track = stream.getTracks()[0]
-            sender = pc1.addTrack(track,stream)
+            sender = pc1.addTrack(track, stream)
             pc1.onicecandidate = function (event) {
                 console.log('发送candidate...')
                 if (event.candidate) {
@@ -69,13 +58,9 @@
                     })
                 }
             }
-            pc1.onnegotiationneeded=function () {
+            pc1.onnegotiationneeded = function () {
                 console.log('需要协商...')
             }
-        }
-
-        function handleError(err) {
-            console.log(err)
         }
     }
 
@@ -98,53 +83,9 @@
                 }))
             }, 500)
         }
-        ws.onmessage = function (res) {
-            let temp = JSON.parse(res.data)
-            if (temp.type === 'offer') {
-                console.log('收到offer...')
-                if(pc2){
-                    pc2.setRemoteDescription(temp.data).then(function () {
-                        pc2.createAnswer().then((answer) => {
-                            pc2.setLocalDescription(answer).then(() => {
-                                sendInfo({
-                                    type: 'answer',
-                                    from: 'pc2',
-                                    to: 'pc1',
-                                    data: answer
-                                })
-                            })
-                        })
-                    })
-                    return
-                }
-                pc2 = new RTCPeerConnection()
-                pc2.ontrack = function (e) {
-                    console.log('获得应答方的视频流...', e.streams)
-                    document.getElementById("video").srcObject = e.streams[0]
-                }
-                pc2.onicecandidate = function (event) {
-                    console.log('发送candidate...')
-                    if (event.candidate) {
-                        sendInfo({
-                            type: 'candidate',
-                            from: 'pc2',
-                            to: 'pc1',
-                            data: event.candidate
-                        })
-                    }
-                }
-                pc2.onnegotiationneeded=function() {
-                    console.log('需要协商...')
-                }
-                pc2.setRemoteDescription(temp.data).then(function () {
-                    pc2_createAnswer()
-                })
-            } else if (temp.type === 'candidate') {
-                console.log('收到candidate...')
-                pc2.addIceCandidate(new RTCIceCandidate(temp.data)).then(() => {
-                    console.log('candidate添加成功')
-                })
-            }
+        ws.onmessage = function (message) {
+            let temp = JSON.parse(message.data)
+            method.get(temp.type)(pc2, temp.data)
         }
     }
 
@@ -175,9 +116,72 @@
         })
     }
 
+    function handleError(err) {
+        console.log(err)
+    }
+
     function sendInfo(info) {
         ws.send(JSON.stringify(info))
     }
+
+    method.set('offer', function (target, data) {
+        console.log('收到offer...')
+        if (target) {
+            target.setRemoteDescription(data).then(function () {
+                target.createAnswer().then((answer) => {
+                    target.setLocalDescription(answer).then(() => {
+                        sendInfo({
+                            type: 'answer',
+                            from: 'pc2',
+                            to: 'pc1',
+                            data: answer
+                        })
+                    })
+                })
+            })
+        } else {
+            pc2 = new RTCPeerConnection()
+            pc2.ontrack = function (e) {
+                console.log('获得应答方的视频流...', e.streams)
+                document.getElementById("video").srcObject = e.streams[0]
+            }
+            pc2.onicecandidate = function (event) {
+                console.log('发送candidate...')
+                if (event.candidate) {
+                    sendInfo({
+                        type: 'candidate',
+                        from: 'pc2',
+                        to: 'pc1',
+                        data: event.candidate
+                    })
+                }
+            }
+            pc2.onnegotiationneeded = function () {
+                console.log('需要协商...')
+            }
+            pc2.setRemoteDescription(data).then(function () {
+                pc2_createAnswer()
+            })
+        }
+    })
+
+    method.set('answer', function (target, data) {
+        console.log('收到answer...')
+        target.setRemoteDescription(data).then(function () {
+            console.log('Peer Connection is success...')
+        })
+    })
+
+    method.set('watch', function () {
+        pc1_createOffer()
+    })
+
+    method.set('candidate', function (target, data) {
+        console.log('收到candidate...')
+        target.addIceCandidate(new RTCIceCandidate(data)).then(() => {
+            console.log('candidate添加成功')
+        }).catch(handleError)
+    })
 </script>
 </body>
 </html>
