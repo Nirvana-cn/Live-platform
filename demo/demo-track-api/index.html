@@ -69,7 +69,7 @@
             localStream = stream
             pc1 = new RTCPeerConnection()
             let track = stream.getTracks()[0]
-            sender = pc1.addTrack(track,stream)
+            sender = pc1.addTrack(track, stream)
             pc1.onicecandidate = function (event) {
                 console.log('发送candidate...')
                 if (event.candidate) {
@@ -81,9 +81,9 @@
                     })
                 }
             }
-            pc1.onnegotiationneeded=function () {
+            pc1.onnegotiationneeded = function () {
                 console.log('需要协商...')
-                if(flag){
+                if (flag) {
                     pc1.createOffer().then((offer) => {
                         pc1.setLocalDescription(offer).then(() => {
                             console.log('发送offer...')
@@ -127,7 +127,7 @@
             let temp = JSON.parse(res.data)
             if (temp.type === 'offer') {
                 console.log('收到offer...')
-                if(pc2){
+                if (pc2) {
                     pc2.setRemoteDescription(temp.data).then(function () {
                         pc2.createAnswer().then((answer) => {
                             pc2.setLocalDescription(answer).then(() => {
@@ -158,7 +158,7 @@
                         })
                     }
                 }
-                pc2.onnegotiationneeded=function() {
+                pc2.onnegotiationneeded = function () {
                     console.log('需要协商...')
                 }
                 pc2.setRemoteDescription(temp.data).then(function () {
@@ -183,12 +183,24 @@
     }
 
     function stopVideo() {
-        pc1.removeTrack(sender)
-        flag=true
+        pc1.getSenders()[0].replaceTrack(null).then(() => {
+            console.log('replace track success...')
+        }).catch(err => {
+            console.log(err)
+        })
+        // pc1.removeTrack(sender)
+        flag = true
     }
+
     function startVideo() {
-        pc1.addTrack(localStream.getTracks()[0],localStream)
+        pc1.getSenders()[0].replaceTrack(localStream.getTracks()[0]).then(() => {
+            console.log('replace track success...')
+        }).catch(err => {
+            console.log(err)
+        })
+        // pc1.addTrack(localStream.getTracks()[0],localStream)
     }
+
     function sendInfo(info) {
         ws.send(JSON.stringify(info))
     }
