@@ -11,7 +11,7 @@
         <legend>服务器</legend>
         <button id="start" onclick="startPeer()">Start</button>
         <button onclick="stopVideo()">Stop</button>
-        <button onclick="startVideo()">Video</button>
+        <button onclick="startVideo()">VideoOn</button>
     </fieldset>
     <br>
     <fieldset>
@@ -183,10 +183,11 @@
     }
 
     function stopVideo() {
+        console.log(typeof pc1.getSenders()[0].replaceTrack)
         pc1.getSenders()[0].replaceTrack(null).then(() => {
             console.log('replace track success...')
         }).catch(err => {
-            console.log(err)
+            console.log(err.toString())
         })
         // pc1.removeTrack(sender)
         flag = true
