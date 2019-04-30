@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ice restart</title>
+</head>
+<body>
+<div>
+    <video id="video" width="640px" height="360px" autoplay controls></video>
+    <fieldset>
+        <legend>服务器</legend>
+        <button id="start" onclick="startPeer()">Start</button>
+    </fieldset>
+    <br>
+    <fieldset>
+        <legend>观看方</legend>
+        <button id="watch" onclick="startWatch()">Watch</button>
+    </fieldset>
+</div>
+<script>
+    let pc1, pc2, ws, localStream, flag, sender
+    let method = new Map()
+    const WSAddress = 'ws://127.0.0.1:3001'
+
+    function startPeer() {
+        document.querySelector('#start').disabled = true
+        ws = new WebSocket(WSAddress)
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: 'connect',
+                from: 'pc1',
+                to: null,
+                data: null
+            }))
+        }
+        ws.onmessage = function (message) {
+            let temp = JSON.parse(message.data)
+            method.get(temp.type)(pc1, temp.data)
+        }
+        navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true
+        }).then(handleSuccess).catch(handleError)
+
+        function handleSuccess(stream) {
+            document.getElementById("video").srcObject = stream
+            localStream = stream
+            pc1 = new RTCPeerConnection()
+            let track = stream.getTracks()[0]
+            sender = pc1.addTrack(track, stream)
+            pc1.onicecandidate = function (event) {
+                console.log('发送candidate...')
+                if (event.candidate) {
+                    sendInfo({
+                        type: 'candidate',
+                        from: 'pc1',
+                        to: 'pc2',
+                        data: event.candidate
+                    })
+                }
+            }
+            pc1.onsignalingstatechange = function (event) {
+                /** signalingState value
+                 * 1. "stable"
+                 * 2. "have-local-offer"
+                 * 3. "have-remote-offer"
+                 * 4. "have-local-pranswer"
+                 * 5. "have-remote-pranswer"
+                 * */
+                console.log('pc1\'s signalingState = ', pc1.signalingState)
+            }
+            pc1.onconnectionstatechange = function (event) {
+                /** connectionState value
+                 * 1. "new"
+                 * 2. "connecting"
+                 * 3. "connected"
+                 * 4. "disconnected"
+                 * 5. "failed"
+                 * 6. "closed"
+                 * */
+                console.log('pc1\'s connectionState = ', pc1.connectionState)
+            }
+            pc1.onicegatheringstatechange = function (event) {
+                /** iceGatheringState value
+                 * 1. "new"
+                 * 2. "gathering"
+                 * 3. "complete"
+                 * */
+                console.log('pc1\'s iceGatheringState = ', pc1.iceGatheringState)
+            }
+            pc1.oniceconnectionstatechange = function (event) {
+                /** iceConnectionState value
+                 * 1. "new"
+                 * 2. "checking"
+                 * 3. "connected"
+                 * 4. "completed"
+                 * 5. "failed"
+                 * 6. "disconnected"
+                 * 7. "closed"
+                 * */
+                console.log('pc1\'s iceConnectionState = ', pc1.iceConnectionState)
+                if(pc1.iceConnectionState === 'failed'){
+                    pc1_createOffer({iceRestart: true})
+                }
+            }
+            pc1.onnegotiationneeded = function (event) {
+                console.log('需要协商...')
+            }
+        }
+    }
+
+    function startWatch() {
+        document.querySelector('#watch').disabled = true
+        ws = new WebSocket(WSAddress)
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: 'connect',
+                from: 'pc2',
+                to: null,
+                data: null
+            }))
+            setTimeout(() => {
+                ws.send(JSON.stringify({
+                    type: 'watch',
+                    from: 'pc2',
+                    to: 'pc1',
+                    data: null
+                }))
+            }, 500)
+        }
+        ws.onmessage = function (message) {
+            let temp = JSON.parse(message.data)
+            method.get(temp.type)(pc2, temp.data)
+        }
+    }
+
+    function pc1_createOffer(options = {}) {
+        pc1.createOffer(options).then((offer) => {
+            console.log('创建offer success...')
+            console.log(offer.sdp)
+            pc1.setLocalDescription(offer).then(() => {
+                console.log('set local description success...')
+                sendInfo({
+                    type: 'offer',
+                    from: 'pc1',
+                    to: 'pc2',
+                    data: offer
+                })
+            })
+        })
+    }
+
+    function pc2_createAnswer() {
+        pc2.createAnswer().then((answer) => {
+            console.log('创建answer success...')
+            pc2.setLocalDescription(answer).then(() => {
+                console.log('set local description success...')
+                sendInfo({
+                    type: 'answer',
+                    from: 'pc2',
+                    to: 'pc1',
+                    data: answer
+                })
+            })
+        })
+    }
+
+    function handleError(err) {
+        console.log(err)
+    }
+
+    function sendInfo(info) {
+        ws.send(JSON.stringify(info))
+    }
+
+    method.set('offer', function (target, data) {
+        console.log('收到offer...')
+        if (target) {
+            target.setRemoteDescription(data).then(function () {
+                console.log('set remote description success...')
+                target.createAnswer().then((answer) => {
+                    target.setLocalDescription(answer).then(() => {
+                        console.log('set local description success...')
+                        sendInfo({
+                            type: 'answer',
+                            from: 'pc2',
+                            to: 'pc1',
+                            data: answer
+                        })
+                    })
+                })
+            })
+        } else {
+            pc2 = new RTCPeerConnection()
+            pc2.ontrack = function (e) {
+                console.log('获得应答方的视频流...', e.streams)
+                document.getElementById("video").srcObject = e.streams[0]
+            }
+            pc2.onicecandidate = function (event) {
+                console.log('发送candidate...')
+                if (event.candidate) {
+                    sendInfo({
+                        type: 'candidate',
+                        from: 'pc2',
+                        to: 'pc1',
+                        data: event.candidate
+                    })
+                }
+            }
+            pc2.onsignalingstatechange = function (event) {
+                console.log('pc2\'s signalingState = ', pc2.signalingState)
+            }
+            pc2.onconnectionstatechange = function (event) {
+                console.log('pc2\'s connectionState = ', pc2.connectionState)
+            }
+            pc2.onicegatheringstatechange = function (event) {
+                console.log('pc2\'s iceGatheringState = ', pc2.iceGatheringState)
+            }
+            pc2.oniceconnectionstatechange = function (event) {
+                console.log('pc2\'s iceConnectionState = ', pc2.iceConnectionState)
+            }
+            pc2.onnegotiationneeded = function () {
+                console.log('需要协商...')
+            }
+            pc2.setRemoteDescription(data).then(function () {
+                console.log('set remote description success...')
+                pc2_createAnswer()
+            })
+        }
+    })
+
+    method.set('answer', function (target, data) {
+        console.log('收到answer...')
+        target.setRemoteDescription(data).then(function () {
+            console.log('set remote description success...')
+        })
+    })
+
+    method.set('watch', function () {
+        pc1_createOffer()
+    })
+
+    method.set('candidate', function (target, data) {
+        console.log('收到candidate...')
+        target.addIceCandidate(new RTCIceCandidate(data)).then(() => {
+            console.log('candidate添加成功')
+        }).catch(handleError)
+    })
+</script>
+</body>
+</html>
