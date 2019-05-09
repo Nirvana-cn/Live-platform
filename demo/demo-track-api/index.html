@@ -20,11 +20,11 @@
     </fieldset>
 </div>
 <script>
-    let pc1, pc2, ws, localStream, flag, sender
-
+    let pc1, pc2, ws, localStream, flag, sender, fakeTrack, track
+    const WSAddress = 'ws://192.168.131.12:3001'
     function startPeer() {
         document.querySelector('#start').disabled = true
-        ws = new WebSocket('ws://127.0.0.1:3001');
+        ws = new WebSocket(WSAddress);
         ws.onopen = function () {
             ws.send(JSON.stringify({
                 type: 'connect',
@@ -64,11 +64,25 @@
             video: true
         }).then(handleSuccess).catch(handleError)
 
+        /** 针对Firefox 58版本以下replaceTrack第一个参数不能为null的问题
+        * get fake stream
+        * FF获取假流不需要权限请求
+        */
+        // navigator.mediaDevices.getUserMedia({
+        //   audio: false,
+        //   video: true,
+        //   fake: true
+        // }).then((stream)=>{
+        //   console.log('get fake stream success...')
+        //   fakeTrack = stream.getTracks()[0]
+        //   fakeTrack.enabled = false
+        // }).catch(handleError)
+
         function handleSuccess(stream) {
             document.getElementById("video").srcObject = stream
             localStream = stream
             pc1 = new RTCPeerConnection()
-            let track = stream.getTracks()[0]
+            track = stream.getTracks()[0]
             sender = pc1.addTrack(track, stream)
             pc1.onicecandidate = function (event) {
                 console.log('发送candidate...')
@@ -106,7 +120,7 @@
 
     function startWatch() {
         document.querySelector('#watch').disabled = true
-        ws = new WebSocket('ws://127.0.0.1:3001');
+        ws = new WebSocket(WSAddress);
         ws.onopen = function () {
             ws.send(JSON.stringify({
                 type: 'connect',
@@ -183,22 +197,30 @@
     }
 
     function stopVideo() {
-        console.log(typeof pc1.getSenders()[0].replaceTrack)
         pc1.getSenders()[0].replaceTrack(null).then(() => {
             console.log('replace track success...')
         }).catch(err => {
             console.log(err.toString())
         })
+        /* 针对Firefox 58版本以下replaceTrack第一个参数不能为null的问题 */
+        // pc1.getSenders()[0].replaceTrack(fakeTrack).then(() => {
+        //     console.log('replace track success...')
+        // }).catch(err => {
+        //     console.log(err.toString())
+        // })
+
+        /* 方案二 */
         // pc1.removeTrack(sender)
         flag = true
     }
 
     function startVideo() {
-        pc1.getSenders()[0].replaceTrack(localStream.getTracks()[0]).then(() => {
+        pc1.getSenders()[0].replaceTrack(track).then(() => {
             console.log('replace track success...')
         }).catch(err => {
             console.log(err)
         })
+        /* 方案二 */
         // pc1.addTrack(localStream.getTracks()[0],localStream)
     }
 
