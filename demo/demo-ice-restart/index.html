@@ -10,6 +10,7 @@
     <fieldset>
         <legend>服务器</legend>
         <button id="start" onclick="startPeer()">Start</button>
+        <button id="restart" onclick="restart()">ICE restart</button>
     </fieldset>
     <br>
     <fieldset>
@@ -60,32 +61,12 @@
                 }
             }
             pc1.onsignalingstatechange = function (event) {
-                /** signalingState value
-                 * 1. "stable"
-                 * 2. "have-local-offer"
-                 * 3. "have-remote-offer"
-                 * 4. "have-local-pranswer"
-                 * 5. "have-remote-pranswer"
-                 * */
                 console.log('pc1\'s signalingState = ', pc1.signalingState)
             }
             pc1.onconnectionstatechange = function (event) {
-                /** connectionState value
-                 * 1. "new"
-                 * 2. "connecting"
-                 * 3. "connected"
-                 * 4. "disconnected"
-                 * 5. "failed"
-                 * 6. "closed"
-                 * */
                 console.log('pc1\'s connectionState = ', pc1.connectionState)
             }
             pc1.onicegatheringstatechange = function (event) {
-                /** iceGatheringState value
-                 * 1. "new"
-                 * 2. "gathering"
-                 * 3. "complete"
-                 * */
                 console.log('pc1\'s iceGatheringState = ', pc1.iceGatheringState)
             }
             pc1.oniceconnectionstatechange = function (event) {
@@ -99,7 +80,7 @@
                  * 7. "closed"
                  * */
                 console.log('pc1\'s iceConnectionState = ', pc1.iceConnectionState)
-                if(pc1.iceConnectionState === 'failed'){
+                if (pc1.iceConnectionState === 'failed') {
                     pc1_createOffer({iceRestart: true})
                 }
             }
@@ -171,6 +152,10 @@
 
     function sendInfo(info) {
         ws.send(JSON.stringify(info))
+    }
+
+    function restart() {
+        pc1_createOffer({iceRestart: true})
     }
 
     method.set('offer', function (target, data) {
