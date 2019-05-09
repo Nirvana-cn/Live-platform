@@ -21,7 +21,7 @@
 </div>
 <script>
     let pc1, pc2, ws, localStream, flag, sender, fakeTrack, track
-    const WSAddress = 'ws://192.168.131.12:3001'
+    const WSAddress = 'ws://127.0.0.1:3001'
     function startPeer() {
         document.querySelector('#start').disabled = true
         ws = new WebSocket(WSAddress);
