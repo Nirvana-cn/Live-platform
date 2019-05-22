@@ -27,7 +27,7 @@
 
     function startPeer() {
         document.querySelector('#start').disabled = true
-        ws = new WebSocket('ws://192.168.131.12:3001');
+        ws = new WebSocket('ws://127.0.0.1:3001');
         ws.onopen = function () {
             ws.send(JSON.stringify({
                 type: 'connect',
@@ -93,7 +93,7 @@
 
     function startWatch() {
         document.querySelector('#watch').disabled = true
-        ws = new WebSocket('ws://192.168.131.12:3001');
+        ws = new WebSocket('ws://127.0.0.1:3001');
         ws.onopen = function () {
             ws.send(JSON.stringify({
                 type: 'connect',
