@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>index</title>
+</head>
+<body>
+<fieldset>
+    <legend>PeerConnection One</legend>
+    <div>
+        <video width="320" height="240" autoplay id="v1"></video>
+    </div>
+    <div onclick="handle(event)" data-user="pc1">
+        <button data-action="CreatePeerConnection">创建PeerConnection对象</button>
+        <button data-action="GetUserMedia" onclick="getMedia(event)">获取媒体流</button>
+        <button data-action="CreateOffer">创建Offer</button>
+    </div>
+</fieldset>
+<fieldset>
+    <legend>PeerConnection Two</legend>
+    <div>
+        <video width="320" height="240" autoplay id="v2"></video>
+    </div>
+    <div onclick="handle(event)" data-user="pc2">
+        <button data-action="CreatePeerConnection">创建PeerConnection对象</button>
+    </div>
+</fieldset>
+<script>
+    var pc1 = new RTCPeerConnection()
+    pc1.name = 'pc1'
+    var pc2 = new RTCPeerConnection()
+    pc2.name = 'pc2'
+
+    function handle(event) {
+        let target
+        if(event.currentTarget.getAttribute('data-user') === 'pc1'){
+            target = pc1
+        }else{
+            target = pc2
+        }
+        console.log(event.target.getAttribute('data-action'))
+        store.dispatch({
+            type: event.target.getAttribute('data-action'),
+            target: target
+        })
+    }
+
+    function getMedia(event) {
+        event.stopPropagation()
+        store.dispatch({
+            type: event.target.getAttribute('data-action'),
+            target: pc1,
+            stream: null,
+            status: 'Pending'
+        })
+    }
+</script>
+</body>
+</html>
