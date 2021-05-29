@@ -10,6 +10,6 @@
   "license": "ISC",
   "devDependencies": {
     "koa": "^2.7.0",
-    "ws": "^6.1.4"
+    "ws": "^7.4.6"
   }
 }
